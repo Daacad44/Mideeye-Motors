@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ScrollToTop } from '@/components/ScrollToTop';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 import Home from '@/pages/Home';
 const Fleet = lazy(() => import('@/pages/Fleet'));
@@ -42,10 +43,7 @@ export default function App() {
 
       <div className="flex-1">
         <AnimatePresence mode="wait">
-          <Suspense
-            key={location.pathname}
-            fallback={<div className="grid min-h-[60vh] place-items-center"><span className="size-8 animate-spin rounded-full border-2 border-line border-t-brand-600" /></div>}
-          >
+          <Suspense key={location.pathname} fallback={<LoadingScreen />}>
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Page><Home /></Page>} />
             <Route path="/fleet" element={<Page><Fleet /></Page>} />

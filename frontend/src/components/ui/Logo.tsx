@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
-import { cld } from '@/lib/cloudinary';
-import { LOGO_PUBLIC_ID, BRAND_NAME, BRAND_SUB } from '@/lib/brand';
+import { useLogoUrl } from '@/lib/branding';
 
 /**
- * Renders the OFFICIAL Mideeye Motors logo, loaded from Cloudinary.
- * No SVG recreation, no local asset. If the official PNG has not been
- * uploaded yet, it degrades to a plain text wordmark (never a fake badge).
+ * Renders the OFFICIAL Mideeye Motors logo PNG (from Cloudinary / branding API).
  *
- * `variant="light"` is used on dark surfaces — the logo sits on a white chip
- * so the official colours keep their contrast without being altered.
+ * There is intentionally NO text/CSS/SVG recreation of the logo. If the
+ * official image has not been uploaded yet, we reserve the space with a
+ * transparent placeholder rather than substituting a fake wordmark.
+ *
+ * `variant="light"` places the logo on a white chip for contrast on dark
+ * surfaces, without altering the logo's own colours/proportions.
  */
 export function Logo({
   className,
@@ -20,28 +21,9 @@ export function Logo({
   variant?: 'dark' | 'light';
   height?: number;
 }) {
-  const [failed, setFailed] = useState(false);
-  const src = cld(LOGO_PUBLIC_ID, { height: height * 2, crop: 'fit' });
-
-  if (failed) {
-    // Text-only fallback (not a logo recreation).
-    return (
-      <span className={cn('flex flex-col leading-none', className)}>
-        <span
-          className="font-display text-[17px] font-extrabold tracking-tight"
-          style={{ color: variant === 'light' ? '#fff' : '#0b67c2' }}
-        >
-          {BRAND_NAME}
-        </span>
-        <span
-          className="text-[9px] font-semibold uppercase tracking-[0.22em]"
-          style={{ color: variant === 'light' ? 'rgba(255,255,255,.72)' : '#7a8aa0' }}
-        >
-          {BRAND_SUB}
-        </span>
-      </span>
-    );
-  }
+  const url = useLogoUrl();
+  const [errored, setErrored] = useState(false);
+  const showImage = url && !errored;
 
   return (
     <span
@@ -50,16 +32,27 @@ export function Logo({
         variant === 'light' && 'rounded-xl bg-white px-2.5 py-1.5 shadow-sm',
         className,
       )}
+      style={{ minHeight: height }}
     >
-      <img
-        src={src}
-        alt="Mideeye Motors & Rental Car Co."
-        style={{ height }}
-        className="w-auto object-contain"
-        loading="eager"
-        decoding="async"
-        onError={() => setFailed(true)}
-      />
+      {showImage ? (
+        <img
+          src={url}
+          alt="Mideeye Motors & Rental Car Co."
+          style={{ height }}
+          className="w-auto object-contain"
+          loading="eager"
+          decoding="async"
+          onError={() => setErrored(true)}
+        />
+      ) : (
+        // Reserve space; never render generated text as the logo.
+        <span
+          aria-label="Mideeye Motors & Rental Car Co."
+          role="img"
+          style={{ height, width: height * 2.6 }}
+          className="inline-block"
+        />
+      )}
     </span>
   );
 }

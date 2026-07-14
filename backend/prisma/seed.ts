@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { PrismaClient, Category, Transmission, FuelType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 

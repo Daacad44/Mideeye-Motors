@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
 import { useVehicle } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
+import { Logo } from '@/components/ui/Logo';
 import { formatCurrency } from '@/lib/cn';
 
 const EXTRAS = [
@@ -78,6 +79,7 @@ export default function Booking() {
           <div className="space-y-6">
             {confirmed ? (
               <div className="rounded-3xl border border-line bg-white p-10 text-center shadow-[var(--shadow-soft)]">
+                <div className="mb-6 flex justify-center"><Logo height={40} /></div>
                 <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
                 <h3 className="mt-4 font-display text-2xl font-extrabold text-navy-700">
                   Booking Confirmed!

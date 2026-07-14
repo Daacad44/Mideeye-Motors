@@ -1,3 +1,4 @@
+import 'express-async-errors'; // routes async errors to the error handler (must be first)
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -10,6 +11,7 @@ import { uploadRouter } from './routes/upload.js';
 import { bookingsRouter } from './routes/bookings.js';
 import { mediaRouter } from './routes/media.js';
 import { adminRouter } from './routes/admin.js';
+import { brandingRouter } from './routes/branding.js';
 
 const app = express();
 
@@ -41,6 +43,7 @@ app.get('/api/health', (_req, res) =>
 );
 
 app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/branding', brandingRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/admin', adminRouter);
@@ -48,10 +51,18 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/bookings', bookingsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+app.use((err: Error & { status?: number; statusCode?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = err.status ?? err.statusCode ?? 500;
+  console.error('[error]', err.message);
+  if (res.headersSent) return;
+  res.status(status >= 400 && status < 600 ? status : 500).json({
+    error: status >= 500 || !err.message ? 'Internal server error' : err.message,
+  });
 });
+
+// Last-resort guards so a stray rejection never takes the server down.
+process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));
+process.on('uncaughtException', (err) => console.error('[uncaughtException]', err));
 
 app.listen(env.port, () => {
   console.log(`🚗 Mideeye Motors API running on http://localhost:${env.port}`);
