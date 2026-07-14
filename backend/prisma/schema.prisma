@@ -1,0 +1,145 @@
+// Mideeye Motors — data model
+// PostgreSQL + Prisma. Cloudinary is the single source of truth for images:
+// only publicIds/metadata are stored here; delivery URLs are derived client-side.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  SUV
+  Sedan
+  Luxury
+  Pickup
+  Electric
+  Van
+}
+
+enum Transmission {
+  Automatic
+  Manual
+}
+
+enum FuelType {
+  Petrol
+  Diesel
+  Hybrid
+  Electric
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Vehicle {
+  id            String       @id @default(cuid())
+  title         String
+  slug          String       @unique
+  category      Category
+  brand         String
+  year          Int
+
+  pricePerDay   Int
+  pricePerWeek  Int
+  pricePerMonth Int
+
+  transmission  Transmission
+  fuelType      FuelType
+  engine        String
+  horsePower    Int
+  seats         Int
+  doors         Int
+  color         String
+  mileage       String       @default("Unlimited")
+  location      String
+
+  rating        Float        @default(0)
+  reviews       Int          @default(0)
+  availability  Boolean      @default(true)
+  featured      Boolean      @default(false)
+
+  description   String
+  features      String[]
+
+  // ── Cloudinary (single source of truth) ──
+  cloudinaryFolder   String
+  cloudinaryPublicId String   // primary/imagePublicId
+  heroImage          String   // publicId
+  coverImage         String   // publicId
+  thumbnail          String   // publicId
+  gallery            VehicleImage[]
+
+  bookings      Booking[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([category])
+  @@index([featured])
+}
+
+model VehicleImage {
+  id        String   @id @default(cuid())
+  publicId  String
+  alt       String   @default("")
+  tag       String?  // front | rear | side | interior | dashboard | wheel | engine | gallery
+  position  Int      @default(0)
+
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId String
+
+  @@index([vehicleId, position])
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role      @default(USER)
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  reference      String        @unique @default(cuid())
+
+  vehicle        Vehicle       @relation(fields: [vehicleId], references: [id])
+  vehicleId      String
+  user           User?         @relation(fields: [userId], references: [id])
+  userId         String?
+
+  pickupLocation String
+  dropoffLocation String
+  pickupDate     DateTime
+  returnDate     DateTime
+
+  extras         String[]
+  insurance      String        @default("basic")
+
+  days           Int
+  subtotal       Int
+  tax            Int
+  total          Int
+
+  status         BookingStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+
+  @@index([vehicleId])
+  @@index([userId])
+}
