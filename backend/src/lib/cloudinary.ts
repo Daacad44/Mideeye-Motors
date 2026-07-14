@@ -10,21 +10,44 @@ cloudinary.config({
 
 export { cloudinary };
 
-/** Upload a buffer to Cloudinary under a vehicle folder; returns the publicId. */
-export function uploadBuffer(
-  buffer: Buffer,
-  folder: string,
-): Promise<{ publicId: string; url: string; width?: number; height?: number }> {
+export interface UploadResult {
+  publicId: string;
+  secureUrl: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+  bytes: number;
+  format: string;
+  resourceType: 'image' | 'video' | 'raw';
+}
+
+/** A small, optimized thumbnail URL derived from a publicId. */
+export function thumbnailFor(publicId: string): string {
+  return cloudinary.url(publicId, {
+    secure: true,
+    transformation: [{ width: 320, height: 200, crop: 'fill', quality: 'auto', fetch_format: 'auto' }],
+  });
+}
+
+/**
+ * Upload a buffer to Cloudinary. Cloudinary auto-optimizes (WebP/AVIF via
+ * f_auto at delivery) and we request eager compression on ingest.
+ */
+export function uploadBuffer(buffer: Buffer, folder: string): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: 'image', overwrite: true },
+      { folder, resource_type: 'image', overwrite: true, quality: 'auto' },
       (error, result) => {
-        if (error || !result) return reject(error);
+        if (error || !result) return reject(error ?? new Error('Upload failed'));
         resolve({
           publicId: result.public_id,
-          url: result.secure_url,
-          width: result.width,
-          height: result.height,
+          secureUrl: result.secure_url,
+          thumbnailUrl: thumbnailFor(result.public_id),
+          width: result.width ?? 0,
+          height: result.height ?? 0,
+          bytes: result.bytes ?? 0,
+          format: result.format ?? '',
+          resourceType: (result.resource_type as UploadResult['resourceType']) ?? 'image',
         });
       },
     );

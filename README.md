@@ -107,12 +107,14 @@ npm run dev               # http://localhost:5173
 
 The frontend works **without** the backend too — it falls back to the bundled seed fleet, so the UI always renders for previews.
 
-### Admin credentials (from seed)
+### Seeded accounts
 ```
-email:    admin@mideeyemotors.com
-password: admin1234
+Super Admin  daacaddeveloper@gmail.com  /  Daacad@44Xxv
+Admin        admin@mideeyemotors.com    /  admin1234
 ```
-Visit `/admin` for fleet + Cloudinary media management, `/dashboard` for the renter view.
+Passwords are hashed with bcrypt (cost 12). Sign in at `/login`, then `/admin`
+opens the tabbed dashboard (Media Library · Fleet · Team & Roles · Audit Log).
+`/dashboard` is the renter view.
 
 ---
 
@@ -128,9 +130,46 @@ Visit `/admin` for fleet + Cloudinary media management, `/dashboard` for the ren
 | POST   | `/api/upload/sign` | Signature for direct browser uploads *(admin)* |
 | DELETE | `/api/upload/:publicId` | Remove image from Cloudinary *(admin)* |
 | POST   | `/api/bookings` | Create a booking (server-side price calc) |
-| POST   | `/api/auth/register` · `/login` · GET `/me` | JWT auth |
+| POST   | `/api/auth/register` · `/login` · `/refresh` · `/logout` · GET `/me` | JWT access + rotating refresh cookie |
+| GET/POST | `/api/media` | List (search/filter/folder) · multi-upload → Cloudinary + metadata *(staff+)* |
+| PATCH/PUT/DELETE | `/api/media/:id` · `/:id/replace` · bulk `/media/bulk-delete` | Rename/reorder/hero-cover · replace · delete (Cloudinary + DB) |
+| GET/POST | `/api/admin/users` | List · create staff/manager/admin *(super admin)* |
+| PATCH/POST/DELETE | `/api/admin/users/:id/role · /status · /reset-password` | Assign role · suspend · reset · delete *(super admin)* |
+| GET | `/api/admin/audit` | Recent audit log *(admin+)* |
 
 Responses are cached in Redis for 60s where useful and invalidated on write.
+
+---
+
+## 🖼️ Official logo policy
+
+The official Mideeye Motors logo is **never** recreated, vectorized, or stored
+locally. It lives in Cloudinary at a fixed publicId (`VITE_LOGO_PUBLIC_ID`,
+default `mideeye-motors/brand/logo`) and is loaded by the `Logo` component.
+Upload the official PNG once via the Media Manager and it appears in the navbar,
+footer, auth screen and favicon — no code changes. Until then, a plain text
+wordmark is shown (never a fake badge).
+
+## 🗂️ Admin Media Manager (`/admin` → Media Library)
+
+The single place administrators manage images. Drag-and-drop / multi-upload with
+progress, search + folder filter, per-item **copy URL / copy publicId / replace /
+rename / delete**, and **bulk select + bulk delete**. Every upload flows
+`Dashboard → API → Cloudinary → PostgreSQL metadata → frontend`. Cloudinary
+auto-serves WebP/AVIF (`f_auto`) and compresses (`q_auto`); no local storage,
+ever. Deletes remove both the Cloudinary asset and the DB row (no orphans).
+
+## 🔐 Roles, security & audit
+
+- **RBAC** — `SUPER_ADMIN › ADMIN › MANAGER › STAFF › CUSTOMER` with a rank
+  hierarchy. Only the Super Admin can create/suspend/delete admins, assign roles
+  and reset passwords; Super Admin accounts are protected from modification.
+- **Auth** — short-lived JWT access tokens + rotating httpOnly refresh cookies;
+  suspended accounts are blocked and their tokens revoked.
+- **Hardening** — Helmet headers, per-window rate limiting (stricter on `/auth`),
+  CORS with credentials, Zod validation on every mutation.
+- **Audit log** — every privileged action (media upload/replace/delete, user
+  create/suspend/role-change, password reset) is recorded with actor + IP.
 
 ---
 

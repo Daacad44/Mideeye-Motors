@@ -53,6 +53,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL}
         VITE_CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+        VITE_LOGO_PUBLIC_ID: ${VITE_LOGO_PUBLIC_ID:-mideeye-motors/brand/logo}
     restart: unless-stopped
     depends_on:
       - api
