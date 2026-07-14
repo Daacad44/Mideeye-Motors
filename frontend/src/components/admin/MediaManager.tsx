@@ -162,6 +162,15 @@ export function MediaManager() {
             className="rounded-lg border border-line bg-white px-2 py-1 font-mono text-[12px] text-navy-700 focus:border-brand-400 focus:outline-none"
           />
         </div>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+          {['mideeye-motors/brand', 'mideeye-motors/media', 'mideeye-motors/banner'].map((f) => (
+            <button key={f} type="button" onClick={() => setTargetFolder(f)}
+              className={'rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors ' +
+                (targetFolder === f ? 'bg-brand-600 text-white' : 'bg-mist-200 text-navy-700 hover:bg-brand-100')}>
+              {f.split('/')[1] === 'brand' ? '🏷️ brand (official logo)' : f.split('/')[1]}
+            </button>
+          ))}
+        </div>
         {progress !== null && (
           <div className="mx-auto mt-4 h-2 max-w-sm overflow-hidden rounded-full bg-mist-200">
             <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} />

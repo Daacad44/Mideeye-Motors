@@ -75,7 +75,15 @@ mediaRouter.post('/', upload.array('files', 20), async (req, res) => {
 
   const created = [];
   for (const file of files) {
-    const up = await uploadBuffer(file.buffer, folder);
+    let up;
+    try {
+      up = await uploadBuffer(file.buffer, folder);
+    } catch (e) {
+      const detail = (e as { message?: string })?.message || 'unknown error';
+      return res.status(502).json({
+        error: `Cloudinary upload failed (${detail}). Verify CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET.`,
+      });
+    }
     const asset = await prisma.mediaAsset.create({
       data: {
         title: meta.title || file.originalname.replace(/\.[^.]+$/, ''),
@@ -126,7 +134,15 @@ mediaRouter.put('/:id/replace', upload.single('file'), async (req, res) => {
   const existing = await prisma.mediaAsset.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: 'Media not found' });
 
-  const up = await uploadBuffer(req.file.buffer, existing.folder);
+  let up;
+  try {
+    up = await uploadBuffer(req.file.buffer, existing.folder);
+  } catch (e) {
+    const detail = (e as { message?: string })?.message || 'unknown error';
+    return res.status(502).json({
+      error: `Cloudinary upload failed (${detail}). Verify your Cloudinary credentials.`,
+    });
+  }
   // Remove the old asset from Cloudinary if the publicId changed.
   if (up.publicId !== existing.publicId) {
     await destroyImage(existing.publicId).catch(() => {});

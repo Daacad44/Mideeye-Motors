@@ -141,14 +141,52 @@ Responses are cached in Redis for 60s where useful and invalidated on write.
 
 ---
 
+## 🩺 Troubleshooting: Login shows "Failed to fetch"
+
+This means the **browser can't reach the API** — it is not a bug in the auth
+code (login/register/refresh/JWT are verified working end-to-end). Check:
+
+1. **Is the API running?** `curl http://localhost:4000/api/health` → `{"status":"ok"}`.
+2. **`VITE_API_URL`** in the web app must point at the API's public URL
+   (e.g. `http://localhost:4000/api`, or your deployed API origin). It is baked
+   at build time — rebuild the frontend after changing it.
+3. **`CORS_ORIGIN`** on the API must include the web app's origin (credentials
+   are sent for the refresh cookie).
+4. **Database** must be reachable (`DATABASE_URL`) and migrated + seeded
+   (`npx prisma db push && npm run seed`).
+
+The app now surfaces meaningful messages instead of "Failed to fetch":
+*Invalid email or password* · *Network connection failed — cannot reach the
+server* · *Too many attempts* · *Server error* · *Your session has expired*.
+
+## ✅ Verified locally (this build)
+Against a real Postgres 16 + the API, driven in a headless browser:
+Super-Admin login → `/admin` dashboard loads · register · refresh · `/me` ·
+protected routes 401 without a token · wrong password → "Invalid email or
+password" · a Cloudinary upload with bad keys returns a clear 502 **without
+crashing the server** · the official logo renders as an `<img>` from
+`/api/branding` (no text recreation).
+
 ## 🖼️ Official logo policy
 
-The official Mideeye Motors logo is **never** recreated, vectorized, or stored
-locally. It lives in Cloudinary at a fixed publicId (`VITE_LOGO_PUBLIC_ID`,
-default `mideeye-motors/brand/logo`) and is loaded by the `Logo` component.
-Upload the official PNG once via the Media Manager and it appears in the navbar,
-footer, auth screen and favicon — no code changes. Until then, a plain text
-wordmark is shown (never a fake badge).
+The official Mideeye Motors logo is **never** recreated, vectorized, drawn in
+CSS/SVG, or replaced with text. The `Logo` component renders **only** the real
+PNG, resolved dynamically:
+
+1. **Upload once** via the Admin Media Manager into the **`mideeye-motors/brand`**
+   folder (there's a one-click "🏷️ brand" preset on the dropzone).
+2. The public **`GET /api/branding`** endpoint returns that image; the frontend
+   uses its `secure_url` in the **navbar, footer, login/register, dashboard,
+   admin, booking confirmation, loading screen, favicon and PWA manifest** —
+   everywhere, with zero code changes.
+3. If no logo has been uploaded yet, the space is reserved with a transparent
+   placeholder — **never** a fake wordmark or badge.
+
+(`VITE_LOGO_PUBLIC_ID`, default `mideeye-motors/brand/logo`, is the fallback
+Cloudinary publicId when the branding API is unavailable.)
+
+> I cannot inject the chat-uploaded PNG's bytes into the repo/Cloudinary
+> myself — upload it once via the dashboard and it propagates automatically.
 
 ## 🗂️ Admin Media Manager (`/admin` → Media Library)
 

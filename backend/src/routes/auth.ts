@@ -44,7 +44,7 @@ authRouter.post('/login', async (req, res) => {
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await bcrypt.compare(parsed.data.password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(401).json({ error: 'Invalid email or password' });
   }
   if (user.status === 'SUSPENDED') {
     return res.status(403).json({ error: 'Account suspended. Contact a Super Admin.' });
