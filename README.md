@@ -213,10 +213,31 @@ ever. Deletes remove both the Cloudinary asset and the DB row (no orphans).
 
 ## 🌍 Deploying to Coolify
 
+**The web and API are same-origin in production:** the web container's nginx
+reverse-proxies `/api` → the internal `api` service, and the SPA is built with
+`VITE_API_URL=/api`. This removes CORS, mixed-content (HTTPS→HTTP) and
+wrong-host failures — the browser only ever talks to the web domain.
+
 1. Create a **Docker Compose** resource pointing at this repo's `docker-compose.yml`.
-2. Set env vars in Coolify: `POSTGRES_*`, `JWT_SECRET`, `CLOUDINARY_*`, `VITE_API_URL` (your public API URL), `CORS_ORIGIN` (your web URL).
-3. Deploy. The API auto-runs `prisma migrate deploy` (falls back to `db push`) on boot.
-4. Seed once from a shell: `npm --prefix backend run seed`.
+2. Set env vars in Coolify: `POSTGRES_*`, `JWT_SECRET`, `CLOUDINARY_*`.
+   You do **not** need to set `VITE_API_URL` (defaults to `/api`) or `CORS_ORIGIN`
+   (defaults to reflect) for the single-compose deploy.
+3. Expose only the **web** service's port 80 to your domain; the `api` service
+   stays internal (`expose`) and is reached via the nginx proxy.
+4. Deploy. On boot the API runs `prisma migrate deploy` (falls back to
+   `db push`) **and seeds the Super Admin idempotently**, so login works
+   immediately — no manual seed step.
+
+> **Deploying web + API as two separate services instead?** Then there's no
+> shared network for the nginx proxy: set `VITE_API_URL` to the API's public
+> **https** URL and `CORS_ORIGIN` to the web URL.
+
+### Login shows "cannot reach the server"? Check, in order:
+1. Is the **api** container running (not crash-looping)? `docker logs` — it must
+   print `🚗 Mideeye Motors API running`. (The entrypoint is `dist/src/index.js`.)
+2. `curl https://<your-domain>/api/health` → `{"status":"ok"}`. If this returns
+   HTML, the nginx `/api` proxy isn't active (rebuild the web image).
+3. `DATABASE_URL` valid and the `db` service healthy.
 
 ---
 
