@@ -27,5 +27,6 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY package.json ./
 COPY prisma ./prisma
 EXPOSE 4000
-# Apply migrations (or db push) then boot.
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; node dist/index.js"]
+# 1) sync schema  2) seed (idempotent — ensures the Super Admin exists)
+# 3) boot the compiled server (tsc emits dist/src/index.js).
+CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; node dist/prisma/seed.js || true; node dist/src/index.js"]

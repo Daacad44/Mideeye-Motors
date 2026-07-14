@@ -5,7 +5,8 @@ COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
 COPY . .
 # Build-time public config (baked into the bundle)
-ARG VITE_API_URL
+# Default to same-origin "/api" — nginx proxies it to the backend.
+ARG VITE_API_URL=/api
 ARG VITE_CLOUDINARY_CLOUD_NAME
 ARG VITE_LOGO_PUBLIC_ID
 ENV VITE_API_URL=$VITE_API_URL
