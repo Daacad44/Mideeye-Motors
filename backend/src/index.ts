@@ -51,10 +51,23 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/bookings', bookingsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
-app.use((err: Error & { status?: number; statusCode?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: Error & { status?: number; statusCode?: number; code?: string }, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const status = err.status ?? err.statusCode ?? 500;
-  console.error('[error]', err.message);
+  // Log the REAL exception server-side: message, Prisma code, and full stack
+  // (the stack's first frame shows the source file + line number).
+  if (status >= 500) {
+    console.error(
+      `\n[500] ${req.method} ${req.originalUrl}\n` +
+        `  name:    ${err.name}\n` +
+        `  message: ${err.message}\n` +
+        (err.code ? `  code:    ${err.code}\n` : '') +
+        `  stack:\n${err.stack}\n`,
+    );
+  } else {
+    console.warn(`[${status}] ${req.method} ${req.originalUrl} — ${err.message}`);
+  }
   if (res.headersSent) return;
+  // Clients still get a safe message; details stay in the server logs.
   res.status(status >= 400 && status < 600 ? status : 500).json({
     error: status >= 500 || !err.message ? 'Internal server error' : err.message,
   });
