@@ -33,8 +33,22 @@ enum FuelType {
 }
 
 enum Role {
-  USER
+  SUPER_ADMIN
   ADMIN
+  MANAGER
+  STAFF
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ResourceType {
+  image
+  video
+  raw
 }
 
 enum BookingStatus {
@@ -82,6 +96,7 @@ model Vehicle {
   coverImage         String   // publicId
   thumbnail          String   // publicId
   gallery            VehicleImage[]
+  media              MediaAsset[]
 
   bookings      Booking[]
 
@@ -106,13 +121,88 @@ model VehicleImage {
 }
 
 model User {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   name      String
-  email     String    @unique
+  email     String       @unique
   password  String
-  role      Role      @default(USER)
-  bookings  Booking[]
+  role      Role         @default(CUSTOMER)
+  status    UserStatus   @default(ACTIVE)
+
+  bookings      Booking[]
+  refreshTokens RefreshToken[]
+  uploads       MediaAsset[]   @relation("UploadedBy")
+  auditLogs     AuditLog[]
+
+  createdById String?
+  createdBy   User?     @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers User[]   @relation("UserCreatedBy")
+
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([role])
+}
+
+/// Cloudinary-backed media asset. NO local file paths — Cloudinary metadata only.
+model MediaAsset {
+  id            String       @id @default(cuid())
+  title         String       @default("")
+  altText       String       @default("")
+
+  publicId      String       @unique
+  secureUrl     String
+  thumbnailUrl  String
+  folder        String
+  resourceType  ResourceType @default(image)
+  format        String       @default("")
+  width         Int          @default(0)
+  height        Int          @default(0)
+  bytes         Int          @default(0)
+
+  isHero        Boolean      @default(false)
+  isCover       Boolean      @default(false)
+  displayOrder  Int          @default(0)
+
+  vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  vehicleId     String?
+
+  uploadedBy    User?        @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedById  String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([vehicleId])
+  @@index([folder])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g. MEDIA_UPLOAD, USER_SUSPEND, VEHICLE_UPDATE
+  entity     String   // e.g. MediaAsset, User, Vehicle
+  entityId   String?
+  metadata   Json?
+  ip         String?
+
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId    String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity])
 }
 
 model Booking {

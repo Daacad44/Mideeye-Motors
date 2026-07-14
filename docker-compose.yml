@@ -1,7 +1,6 @@
 # ─────────────────────────────────────────────────────────────
-# Mideeye Motors — full stack (Postgres + Redis + API + Web)
-# Local: `docker compose up --build`
-# Coolify: point a "Docker Compose" resource at this file.
+# Mideeye Motors — full stack (Coolify-ready)
+# Postgres + Redis + API + Web
 # ─────────────────────────────────────────────────────────────
 services:
   db:
@@ -40,25 +39,26 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      CORS_ORIGIN: ${CORS_ORIGIN}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-mideeye-motors}
-    ports:
-      - '4000:4000'
+    expose:
+      - '4000'
 
   web:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+        VITE_API_URL: ${VITE_API_URL}
         VITE_CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+        VITE_LOGO_PUBLIC_ID: ${VITE_LOGO_PUBLIC_ID:-mideeye-motors/brand/logo}
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - '8080:80'
+    expose:
+      - '80'
 
 volumes:
   db_data:

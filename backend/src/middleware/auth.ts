@@ -2,9 +2,20 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../lib/env.js';
 
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'STAFF' | 'CUSTOMER';
+
+/** Higher number = more privilege. */
+export const ROLE_RANK: Record<Role, number> = {
+  SUPER_ADMIN: 100,
+  ADMIN: 80,
+  MANAGER: 60,
+  STAFF: 40,
+  CUSTOMER: 10,
+};
+
 export interface AuthPayload {
   id: string;
-  role: 'USER' | 'ADMIN';
+  role: Role;
   email: string;
 }
 
@@ -17,8 +28,8 @@ declare global {
   }
 }
 
-export function signToken(payload: AuthPayload): string {
-  return jwt.sign(payload, env.jwtSecret, { expiresIn: env.jwtExpiresIn as jwt.SignOptions['expiresIn'] });
+export function signAccessToken(payload: AuthPayload): string {
+  return jwt.sign(payload, env.jwtSecret, { expiresIn: '15m' });
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
@@ -34,9 +45,29 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
+/** Require the caller to have at least one of the given roles. */
+export function requireRole(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
 }
+
+/** Require a minimum privilege rank (role hierarchy). */
+export function requireMinRank(min: Role) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+    if (ROLE_RANK[req.user.role] < ROLE_RANK[min]) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
+
+// Convenience guards
+export const requireStaff = requireMinRank('STAFF');
+export const requireAdmin = requireMinRank('ADMIN');
+export const requireSuperAdmin = requireRole('SUPER_ADMIN');

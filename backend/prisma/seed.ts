@@ -107,13 +107,25 @@ const data: Seed[] = [
 async function main() {
   console.log('🌱 Seeding Mideeye Motors…');
 
+  // Default Super Admin — the only account that can manage other admins.
+  await prisma.user.upsert({
+    where: { email: 'daacaddeveloper@gmail.com' },
+    update: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
+    create: {
+      name: 'Daacad (Super Admin)',
+      email: 'daacaddeveloper@gmail.com',
+      password: await bcrypt.hash('Daacad@44Xxv', 12),
+      role: 'SUPER_ADMIN',
+    },
+  });
+
   await prisma.user.upsert({
     where: { email: 'admin@mideeyemotors.com' },
     update: {},
     create: {
       name: 'Mideeye Admin',
       email: 'admin@mideeyemotors.com',
-      password: await bcrypt.hash('admin1234', 10),
+      password: await bcrypt.hash('admin1234', 12),
       role: 'ADMIN',
     },
   });
@@ -150,7 +162,9 @@ async function main() {
     console.log(`  ✓ ${v.title}`);
   }
 
-  console.log('✅ Seed complete. Admin login: admin@mideeyemotors.com / admin1234');
+  console.log('✅ Seed complete.');
+  console.log('   Super Admin: daacaddeveloper@gmail.com / Daacad@44Xxv');
+  console.log('   Admin:       admin@mideeyemotors.com / admin1234');
 }
 
 main()

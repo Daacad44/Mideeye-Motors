@@ -1,60 +1,65 @@
+import { useState } from 'react';
 import { cn } from '@/lib/cn';
+import { cld } from '@/lib/cloudinary';
+import { LOGO_PUBLIC_ID, BRAND_NAME, BRAND_SUB } from '@/lib/brand';
 
-/** Mideeye Motors horizontal lockup — badge mark + wordmark. */
+/**
+ * Renders the OFFICIAL Mideeye Motors logo, loaded from Cloudinary.
+ * No SVG recreation, no local asset. If the official PNG has not been
+ * uploaded yet, it degrades to a plain text wordmark (never a fake badge).
+ *
+ * `variant="light"` is used on dark surfaces — the logo sits on a white chip
+ * so the official colours keep their contrast without being altered.
+ */
 export function Logo({
   className,
   variant = 'dark',
+  height = 40,
 }: {
   className?: string;
   variant?: 'dark' | 'light';
+  height?: number;
 }) {
-  const wordColor = variant === 'light' ? '#ffffff' : '#0b67c2';
-  const subColor = variant === 'light' ? 'rgba(255,255,255,.72)' : '#7a8aa0';
+  const [failed, setFailed] = useState(false);
+  const src = cld(LOGO_PUBLIC_ID, { height: height * 2, crop: 'fit' });
 
-  return (
-    <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <svg width="40" height="40" viewBox="0 0 120 120" fill="none" aria-hidden>
-        <defs>
-          <linearGradient id="mm-lock" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#18a8f5" />
-            <stop offset="1" stopColor="#0b67c2" />
-          </linearGradient>
-        </defs>
-        <path d="M60 6 108 30 108 74 60 114 12 74 12 30Z" fill="#061423" />
-        <path
-          d="M60 6 108 30 108 74 60 114 12 74 12 30Z"
-          fill="none"
-          stroke="url(#mm-lock)"
-          strokeWidth="4"
-        />
-        <path
-          d="M60 14 100 34 100 71 60 104 20 71 20 34Z"
-          fill="none"
-          stroke="#f59e0b"
-          strokeWidth="2.4"
-        />
-        <g stroke="#18a8f5" strokeWidth="4.4" strokeLinecap="round" strokeLinejoin="round" fill="none">
-          <path d="M34 66 C40 52 52 46 66 46 C78 46 86 52 90 60" />
-          <path d="M34 66 L88 66" />
-          <circle cx="48" cy="66" r="7" fill="#061423" />
-          <circle cx="78" cy="66" r="7" fill="#061423" />
-        </g>
-        <path d="M64 46 L84 44" stroke="#f59e0b" strokeWidth="4.4" strokeLinecap="round" />
-      </svg>
-      <span className="flex flex-col leading-none">
+  if (failed) {
+    // Text-only fallback (not a logo recreation).
+    return (
+      <span className={cn('flex flex-col leading-none', className)}>
         <span
           className="font-display text-[17px] font-extrabold tracking-tight"
-          style={{ color: wordColor }}
+          style={{ color: variant === 'light' ? '#fff' : '#0b67c2' }}
         >
-          MIDEEYE MOTORS
+          {BRAND_NAME}
         </span>
         <span
           className="text-[9px] font-semibold uppercase tracking-[0.22em]"
-          style={{ color: subColor }}
+          style={{ color: variant === 'light' ? 'rgba(255,255,255,.72)' : '#7a8aa0' }}
         >
-          & Rental Car Co.
+          {BRAND_SUB}
         </span>
       </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center',
+        variant === 'light' && 'rounded-xl bg-white px-2.5 py-1.5 shadow-sm',
+        className,
+      )}
+    >
+      <img
+        src={src}
+        alt="Mideeye Motors & Rental Car Co."
+        style={{ height }}
+        className="w-auto object-contain"
+        loading="eager"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
     </span>
   );
 }

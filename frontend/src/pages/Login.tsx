@@ -1,11 +1,33 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, User, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Login() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const { login, register } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      if (mode === 'login') await login(form.email, form.password);
+      else await register(form.name, form.email, form.password);
+      navigate('/admin');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const field = 'w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
 
   return (
@@ -42,23 +64,27 @@ export default function Login() {
             {mode === 'login' ? 'Sign in to your Mideeye Motors account.' : 'Join Mideeye Motors in seconds.'}
           </p>
 
-          <form onSubmit={(e) => e.preventDefault()} className="mt-8 space-y-4">
+          <form onSubmit={submit} className="mt-8 space-y-4">
             {mode === 'register' && (
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-                <input className={field} placeholder="Full name" />
+                <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
+                <input className={field} placeholder="Full name" required value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
             )}
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-              <input type="email" className={field} placeholder="Email address" />
+              <input type="email" className={field} placeholder="Email address" required value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-              <input type="password" className={field} placeholder="Password" />
+              <input type="password" className={field} placeholder="Password" required value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
-            <Button type="submit" size="lg" variant="secondary" className="w-full">
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-[13.5px] font-medium text-red-600">{error}</p>}
+            <Button type="submit" size="lg" variant="secondary" className="w-full" disabled={busy}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : mode === 'login' ? 'Sign In' : 'Create Account'}
             </Button>
           </form>
 
