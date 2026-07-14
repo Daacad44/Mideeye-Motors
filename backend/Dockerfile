@@ -26,7 +26,9 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY package.json ./
 COPY prisma ./prisma
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 EXPOSE 4000
-# 1) sync schema  2) seed (idempotent — ensures the Super Admin exists)
-# 3) boot the compiled server (tsc emits dist/src/index.js).
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; node dist/prisma/seed.js || true; node dist/src/index.js"]
+# Applies the schema, seeds the Super Admin, then boots — logging each step
+# so a broken deploy is diagnosable straight from `docker logs`.
+CMD ["./docker-entrypoint.sh"]
