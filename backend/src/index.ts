@@ -4,14 +4,15 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import { env } from './lib/env.js';
 import { vehiclesRouter } from './routes/vehicles.js';
 import { authRouter } from './routes/auth.js';
-import { uploadRouter } from './routes/upload.js';
 import { bookingsRouter } from './routes/bookings.js';
-import { mediaRouter } from './routes/media.js';
+import { adminMediaRouter } from './routes/adminMedia.js';
 import { adminRouter } from './routes/admin.js';
 import { brandingRouter } from './routes/branding.js';
+import { uploadRouter } from './routes/upload.js';
 
 const app = express();
 
@@ -45,13 +46,19 @@ app.get('/api/health', (_req, res) =>
 app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/branding', brandingRouter);
 app.use('/api/auth', authRouter);
-app.use('/api/media', mediaRouter);
-app.use('/api/admin', adminRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/admin/media', adminMediaRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/bookings', bookingsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err: Error & { status?: number; statusCode?: number; code?: string }, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Malformed uploads (wrong field name, oversized file, too many files) are
+  // a client mistake, not a server fault — surface as 400 with a clear reason.
+  if (err instanceof multer.MulterError) {
+    console.warn(`[400] ${req.method} ${req.originalUrl} — ${err.code}: ${err.message}`);
+    return res.status(400).json({ error: `Upload rejected: ${err.message}` });
+  }
   const status = err.status ?? err.statusCode ?? 500;
   // Log the REAL exception server-side: message, Prisma code, and full stack
   // (the stack's first frame shows the source file + line number).
@@ -76,6 +83,10 @@ app.use((err: Error & { status?: number; statusCode?: number; code?: string }, r
 // Last-resort guards so a stray rejection never takes the server down.
 process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));
 process.on('uncaughtException', (err) => console.error('[uncaughtException]', err));
+
+if (!env.imagekit.configured) {
+  console.warn('[imagekit] IMAGEKIT_PUBLIC_KEY/IMAGEKIT_PRIVATE_KEY not set — media uploads disabled until configured.');
+}
 
 app.listen(env.port, () => {
   console.log(`🚗 Mideeye Motors API running on http://localhost:${env.port}`);

@@ -1,39 +1,30 @@
 import type { Vehicle } from '@/types/vehicle';
 
 /**
- * Seed fleet — mirrors the backend seed. Every image is a Cloudinary
- * `publicId` under a per-vehicle folder (`mideeye-motors/<slug>/…`).
- * The site derives URLs from these ids, so uploading real studio shots to
- * the same ids in Cloudinary makes them appear instantly, no code change.
+ * Seed fleet — mirrors the backend seed. This array is the frontend's
+ * offline fallback when the API is unreachable (see `lib/api.ts`); pricing/
+ * specs/descriptions are real, but image fields are intentionally EMPTY.
  *
- * This array is also the frontend's offline fallback when the API is
- * unreachable (see `lib/api.ts`).
+ * There are no hardcoded image references here — ImageKit is the
+ * only source of truth for photos. `VehicleImage` renders an on-brand
+ * placeholder for any vehicle without a real uploaded photo yet. An admin
+ * uploads real photos via the Media Library, which populates these fields
+ * automatically — no code change, ever.
  */
 
-const gallery = (slug: string, name: string) => [
-  { publicId: `mideeye-motors/${slug}/front`, alt: `${name} — front view`, tag: 'front' },
-  { publicId: `mideeye-motors/${slug}/rear`, alt: `${name} — rear view`, tag: 'rear' },
-  { publicId: `mideeye-motors/${slug}/side`, alt: `${name} — side view`, tag: 'side' },
-  { publicId: `mideeye-motors/${slug}/interior`, alt: `${name} — interior`, tag: 'interior' },
-  { publicId: `mideeye-motors/${slug}/dashboard`, alt: `${name} — dashboard`, tag: 'dashboard' },
-  { publicId: `mideeye-motors/${slug}/wheel`, alt: `${name} — wheel`, tag: 'wheel' },
-  { publicId: `mideeye-motors/${slug}/engine`, alt: `${name} — engine`, tag: 'engine' },
-];
-
-const base = (slug: string, name: string) => ({
+const base = (slug: string) => ({
   slug,
-  cloudinaryFolder: `mideeye-motors/${slug}`,
-  heroImage: `mideeye-motors/${slug}/hero`,
-  coverImage: `mideeye-motors/${slug}/cover`,
-  thumbnail: `mideeye-motors/${slug}/thumb`,
-  gallery: gallery(slug, name),
+  heroImage: null,
+  coverImage: null,
+  thumbnail: null,
+  gallery: [],
 });
 
 export const vehicles: Vehicle[] = [
   {
     id: 'v-land-cruiser',
     title: 'Toyota Land Cruiser 2024',
-    ...base('toyota-land-cruiser-2024', 'Toyota Land Cruiser 2024'),
+    ...base('toyota-land-cruiser-2024'),
     category: 'SUV',
     brand: 'Toyota',
     year: 2024,
@@ -69,7 +60,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-camry',
     title: 'Toyota Camry 2023',
-    ...base('toyota-camry-2023', 'Toyota Camry 2023'),
+    ...base('toyota-camry-2023'),
     category: 'Sedan',
     brand: 'Toyota',
     year: 2023,
@@ -103,7 +94,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-santa-fe',
     title: 'Hyundai Santa Fe 2023',
-    ...base('hyundai-santa-fe-2023', 'Hyundai Santa Fe 2023'),
+    ...base('hyundai-santa-fe-2023'),
     category: 'SUV',
     brand: 'Hyundai',
     year: 2023,
@@ -137,7 +128,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-k5',
     title: 'Kia K5 2023',
-    ...base('kia-k5-2023', 'Kia K5 2023'),
+    ...base('kia-k5-2023'),
     category: 'Sedan',
     brand: 'Kia',
     year: 2023,
@@ -171,7 +162,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-eclass',
     title: 'Mercedes-Benz E-Class',
-    ...base('mercedes-benz-e-class', 'Mercedes-Benz E-Class'),
+    ...base('mercedes-benz-e-class'),
     category: 'Luxury',
     brand: 'Mercedes-Benz',
     year: 2024,
@@ -205,7 +196,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-5series',
     title: 'BMW 5 Series 2024',
-    ...base('bmw-5-series-2024', 'BMW 5 Series 2024'),
+    ...base('bmw-5-series-2024'),
     category: 'Luxury',
     brand: 'BMW',
     year: 2024,
@@ -239,7 +230,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-hilux-surf',
     title: 'Toyota Hilux Surf',
-    ...base('toyota-hilux-surf', 'Toyota Hilux Surf'),
+    ...base('toyota-hilux-surf'),
     category: 'Pickup',
     brand: 'Toyota',
     year: 2023,
@@ -273,7 +264,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-model3',
     title: 'Tesla Model 3 2024',
-    ...base('tesla-model-3-2024', 'Tesla Model 3 2024'),
+    ...base('tesla-model-3-2024'),
     category: 'Electric',
     brand: 'Tesla',
     year: 2024,
@@ -307,7 +298,7 @@ export const vehicles: Vehicle[] = [
   {
     id: 'v-hiace',
     title: 'Toyota HiAce Van',
-    ...base('toyota-hiace-van', 'Toyota HiAce Van'),
+    ...base('toyota-hiace-van'),
     category: 'Van',
     brand: 'Toyota',
     year: 2023,

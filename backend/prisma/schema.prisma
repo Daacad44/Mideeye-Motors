@@ -1,6 +1,8 @@
 // Mideeye Motors — data model
-// PostgreSQL + Prisma. Cloudinary is the single source of truth for images:
-// only publicIds/metadata are stored here; delivery URLs are derived client-side.
+// PostgreSQL + Prisma. ImageKit is the single source of truth for images:
+// only the ImageKit fileId/filePath/url are stored here; transformed
+// delivery URLs are derived (server or client) from filePath + a named
+// preset (hero/card/gallery/team/blogcover/thumb/logo) via `tr=` params.
 
 generator client {
   provider = "prisma-client-js"
@@ -45,12 +47,6 @@ enum UserStatus {
   SUSPENDED
 }
 
-enum ResourceType {
-  image
-  video
-  raw
-}
-
 enum BookingStatus {
   PENDING
   CONFIRMED
@@ -89,14 +85,15 @@ model Vehicle {
   description   String
   features      String[]
 
-  // ── Cloudinary (single source of truth) ──
-  cloudinaryFolder   String
-  cloudinaryPublicId String   // primary/imagePublicId
-  heroImage          String   // publicId
-  coverImage         String   // publicId
-  thumbnail          String   // publicId
-  gallery            VehicleImage[]
-  media              MediaAsset[]
+  // ── ImageKit (single source of truth) ──
+  // Each points at a MediaImage row; delivery URL = filePath + a named preset.
+  heroImage     MediaImage?    @relation("VehicleHero", fields: [heroImageId], references: [id], onDelete: SetNull)
+  heroImageId   String?
+  coverImage    MediaImage?    @relation("VehicleCover", fields: [coverImageId], references: [id], onDelete: SetNull)
+  coverImageId  String?
+  thumbnail     MediaImage?    @relation("VehicleThumbnail", fields: [thumbnailId], references: [id], onDelete: SetNull)
+  thumbnailId   String?
+  gallery       VehicleImage[]
 
   bookings      Booking[]
 
@@ -108,16 +105,24 @@ model Vehicle {
 }
 
 model VehicleImage {
-  id        String   @id @default(cuid())
-  publicId  String
-  alt       String   @default("")
-  tag       String?  // front | rear | side | interior | dashboard | wheel | engine | gallery
-  position  Int      @default(0)
+  id          String     @id @default(cuid())
 
-  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  vehicleId String
+  image       MediaImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  imageId     String
 
-  @@index([vehicleId, position])
+  alt         String     @default("")
+  // front | rear | side | left | right | interior | exterior | dashboard |
+  // engine | wheel | 360 | thumbnail | gallery — free-form, not DB-enforced.
+  tag         String?
+  isHero      Boolean    @default(false)
+  isCover     Boolean    @default(false)
+  displayOrder Int       @default(0)
+
+  vehicle     Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId   String
+
+  @@index([vehicleId, displayOrder])
+  @@index([imageId])
 }
 
 model User {
@@ -130,7 +135,7 @@ model User {
 
   bookings      Booking[]
   refreshTokens RefreshToken[]
-  uploads       MediaAsset[]   @relation("UploadedBy")
+  uploads       MediaImage[]   @relation("UploadedBy")
   auditLogs     AuditLog[]
 
   createdById String?
@@ -143,37 +148,65 @@ model User {
   @@index([role])
 }
 
-/// Cloudinary-backed media asset. NO local file paths — Cloudinary metadata only.
-model MediaAsset {
-  id            String       @id @default(cuid())
-  title         String       @default("")
-  altText       String       @default("")
+/// ImageKit asset. NO local file paths, NO Cloudinary/Cloudflare fields —
+/// ImageKit metadata only. `fileId` is ImageKit's canonical reference
+/// (used to delete/rename via the SDK); `filePath` + `url` are what every
+/// delivery URL is derived from via `tr=` transformation params — never a
+/// pre-registered named variant, ImageKit resizes on the fly per request.
+model MediaImage {
+  id           String   @id @default(cuid())
 
-  publicId      String       @unique
-  secureUrl     String
-  thumbnailUrl  String
-  folder        String
-  resourceType  ResourceType @default(image)
-  format        String       @default("")
-  width         Int          @default(0)
-  height        Int          @default(0)
-  bytes         Int          @default(0)
+  fileId       String   @unique
+  filePath     String   // e.g. /mideeye-motors/vehicles/<slug>/front.jpg
+  url          String   // base ImageKit delivery URL, no transform params
+  thumbnailUrl String?
 
-  isHero        Boolean      @default(false)
-  isCover       Boolean      @default(false)
-  displayOrder  Int          @default(0)
+  width        Int?
+  height       Int?
+  size         Int?
+  mimeType     String?
 
-  vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  vehicleId     String?
+  altText      String   @default("")
+  caption      String   @default("")
+  folder       String?  // ImageKit real folder path
+  tags         String[]
 
-  uploadedBy    User?        @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
-  uploadedById  String?
+  uploadedBy   User?    @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedById String?
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@index([vehicleId])
+  // ── usage (for the Media Library's "used vs unused" + usage tracking) ──
+  vehicleImages  VehicleImage[]
+  vehicleHero    Vehicle[]      @relation("VehicleHero")
+  vehicleCover   Vehicle[]      @relation("VehicleCover")
+  vehicleThumb   Vehicle[]      @relation("VehicleThumbnail")
+  brandingLogo   Branding[]     @relation("BrandingLogo")
+  brandingFavicon Branding[]    @relation("BrandingFavicon")
+  brandingHero   Branding[]     @relation("BrandingHero")
+
   @@index([folder])
+}
+
+/// Singleton row (id "default") holding site-wide branding + contact info.
+/// Image fields reference MediaImage — never a raw URL or local path.
+model Branding {
+  id            String      @id @default("default")
+
+  logo          MediaImage? @relation("BrandingLogo", fields: [logoImageId], references: [id], onDelete: SetNull)
+  logoImageId   String?
+  favicon       MediaImage? @relation("BrandingFavicon", fields: [faviconImageId], references: [id], onDelete: SetNull)
+  faviconImageId String?
+  heroImage     MediaImage? @relation("BrandingHero", fields: [heroImageId], references: [id], onDelete: SetNull)
+  heroImageId   String?
+
+  primaryColor  String      @default("#0b67c2")
+  phone         String      @default("")
+  email         String      @default("")
+  socials       Json?
+
+  updatedAt     DateTime    @updatedAt
 }
 
 model RefreshToken {
@@ -191,7 +224,7 @@ model RefreshToken {
 model AuditLog {
   id         String   @id @default(cuid())
   action     String   // e.g. MEDIA_UPLOAD, USER_SUSPEND, VEHICLE_UPDATE
-  entity     String   // e.g. MediaAsset, User, Vehicle
+  entity     String   // e.g. MediaImage, User, Vehicle
   entityId   String?
   metadata   Json?
   ip         String?

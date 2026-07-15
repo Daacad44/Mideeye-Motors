@@ -66,7 +66,7 @@ export default function Dashboard() {
                     <td className="py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-mist-200">
-                          <VehicleImage publicId={b.v.thumbnail} alt={b.v.title} fit="contain" className="h-full w-full" sizes="64px" />
+                          <VehicleImage filePath={b.v.thumbnail?.filePath} alt={b.v.thumbnail?.alt || b.v.title} preset="thumb" fit="contain" className="h-full w-full" />
                         </div>
                         <div>
                           <div className="text-[14px] font-bold text-navy-700">{b.v.title}</div>

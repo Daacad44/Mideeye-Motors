@@ -4,7 +4,11 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const galleryTags = ['front', 'rear', 'side', 'interior', 'dashboard', 'wheel', 'engine'];
+// Seed accounts are env-overridable per deployment; these are the defaults.
+const SUPER_ADMIN_EMAIL = process.env.SEED_SUPER_ADMIN_EMAIL || 'daacaddeveloper@gmail.com';
+const SUPER_ADMIN_PASSWORD = process.env.SEED_SUPER_ADMIN_PASSWORD || 'Daacad@44Xxv';
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@mideeyemotors.com';
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'admin1234';
 
 type Seed = {
   title: string;
@@ -110,62 +114,62 @@ async function main() {
 
   // Default Super Admin — the only account that can manage other admins.
   await prisma.user.upsert({
-    where: { email: 'daacaddeveloper@gmail.com' },
+    where: { email: SUPER_ADMIN_EMAIL },
     update: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
     create: {
       name: 'Daacad (Super Admin)',
-      email: 'daacaddeveloper@gmail.com',
-      password: await bcrypt.hash('Daacad@44Xxv', 12),
+      email: SUPER_ADMIN_EMAIL,
+      password: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 12),
       role: 'SUPER_ADMIN',
     },
   });
 
   await prisma.user.upsert({
-    where: { email: 'admin@mideeyemotors.com' },
+    where: { email: ADMIN_EMAIL },
     update: {},
     create: {
       name: 'Mideeye Admin',
-      email: 'admin@mideeyemotors.com',
-      password: await bcrypt.hash('admin1234', 12),
+      email: ADMIN_EMAIL,
+      password: await bcrypt.hash(ADMIN_PASSWORD, 12),
       role: 'ADMIN',
     },
   });
 
+  // Site-wide branding — a single default row. Image fields (logo, favicon,
+  // hero) start empty; an admin uploads the real assets via the Media
+  // Library and PATCHes /api/branding to point at them. No image is ever
+  // hardcoded or bundled with the app.
+  await prisma.branding.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      primaryColor: '#0b67c2',
+      phone: '+252 61 2345678',
+      email: 'hello@mideeyemotors.com',
+      socials: {},
+    },
+  });
+
+  // Vehicles: pricing/specs/descriptions only. Image fields (hero/cover/
+  // thumbnail/gallery) are intentionally left empty — old Cloudinary
+  // publicIds pointed at assets that no longer exist under ImageKit, so
+  // placeholder image references are wiped rather than faked. An admin
+  // uploads real photos via the Media Library, which populates these
+  // fields automatically (no code change, no redeploy).
   for (const v of data) {
-    const folder = `mideeye-motors/${v.slug}`;
     await prisma.vehicle.upsert({
       where: { slug: v.slug },
-      update: {
-        ...v,
-        cloudinaryFolder: folder,
-        cloudinaryPublicId: `${folder}/cover`,
-        heroImage: `${folder}/hero`,
-        coverImage: `${folder}/cover`,
-        thumbnail: `${folder}/thumb`,
-      },
-      create: {
-        ...v,
-        cloudinaryFolder: folder,
-        cloudinaryPublicId: `${folder}/cover`,
-        heroImage: `${folder}/hero`,
-        coverImage: `${folder}/cover`,
-        thumbnail: `${folder}/thumb`,
-        gallery: {
-          create: galleryTags.map((tag, i) => ({
-            publicId: `${folder}/${tag}`,
-            alt: `${v.title} — ${tag} view`,
-            tag,
-            position: i,
-          })),
-        },
-      },
+      update: { ...v },
+      create: { ...v },
     });
     console.log(`  ✓ ${v.title}`);
   }
 
   console.log('✅ Seed complete.');
-  console.log('   Super Admin: daacaddeveloper@gmail.com / Daacad@44Xxv');
-  console.log('   Admin:       admin@mideeyemotors.com / admin1234');
+  console.log(`   Super Admin: ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}`);
+  console.log(`   Admin:       ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+  console.log('   Vehicle images are empty — upload real photos via the Admin Media Library.');
 }
 
 main()

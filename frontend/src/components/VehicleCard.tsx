@@ -42,8 +42,9 @@ export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: 
 
         <Link to={`/fleet/${vehicle.slug}`}>
           <VehicleImage
-            publicId={vehicle.coverImage}
-            alt={vehicle.title}
+            filePath={vehicle.coverImage?.filePath}
+            alt={vehicle.coverImage?.alt || vehicle.title}
+            preset="card"
             fit="contain"
             className="aspect-[16/10] w-full transition-transform duration-700 group-hover:scale-[1.04]"
             sizes="(max-width: 640px) 90vw, 320px"

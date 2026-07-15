@@ -9,24 +9,29 @@ export interface AuthUser {
   status: UserStatus;
 }
 
-export interface MediaAsset {
+export interface MediaUsage {
+  type: string; // 'vehicle-gallery' | 'vehicle-hero' | 'vehicle-cover' | 'vehicle-thumbnail' | 'branding'
   id: string;
-  title: string;
+  label: string;
+}
+
+export interface MediaImage {
+  id: string;
+  fileId: string; // ImageKit-issued file ID
+  filePath: string; // e.g. /mideeye-motors/vehicles/front.jpg
+  url: string; // base delivery URL, no transform params
+  thumbnailUrl: string | null;
+  width: number | null;
+  height: number | null;
+  size: number | null;
+  mimeType: string | null;
   altText: string;
-  publicId: string;
-  secureUrl: string;
-  thumbnailUrl: string;
-  folder: string;
-  resourceType: 'image' | 'video' | 'raw';
-  format: string;
-  width: number;
-  height: number;
-  bytes: number;
-  isHero: boolean;
-  isCover: boolean;
-  displayOrder: number;
-  vehicleId: string | null;
+  caption: string;
+  folder: string | null;
+  tags: string[];
   createdAt: string;
+  inUse: boolean;
+  usedBy: MediaUsage[];
 }
 
 export interface AdminUser {

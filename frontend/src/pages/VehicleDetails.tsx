@@ -10,7 +10,12 @@ import { Lightbox } from '@/components/Lightbox';
 import { VehicleCard } from '@/components/VehicleCard';
 import { ButtonLink } from '@/components/ui/Button';
 import { formatCurrency } from '@/lib/cn';
-import type { VehicleImage as VImg } from '@/types/vehicle';
+
+export interface GalleryItem {
+  filePath: string;
+  alt: string;
+  tag?: string;
+}
 
 export default function VehicleDetails() {
   const { slug } = useParams();
@@ -19,12 +24,12 @@ export default function VehicleDetails() {
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
-  const images: VImg[] = useMemo(() => {
+  const images: GalleryItem[] = useMemo(() => {
     if (!vehicle) return [];
-    return [
-      { publicId: vehicle.coverImage, alt: vehicle.title, tag: 'cover' },
-      ...vehicle.gallery,
-    ];
+    const cover = vehicle.coverImage
+      ? [{ filePath: vehicle.coverImage.filePath, alt: vehicle.coverImage.alt || vehicle.title, tag: 'cover' }]
+      : [];
+    return [...cover, ...vehicle.gallery.map((g) => ({ filePath: g.filePath, alt: g.alt, tag: g.tag }))];
   }, [vehicle]);
 
   if (loading) {
@@ -94,12 +99,12 @@ export default function VehicleDetails() {
               </button>
               <button onClick={() => setLightbox(active)} className="block w-full cursor-zoom-in">
                 <VehicleImage
-                  publicId={images[active]?.publicId}
+                  filePath={images[active]?.filePath}
                   alt={images[active]?.alt ?? vehicle.title}
+                  preset="gallery"
                   fit="contain"
                   priority
                   className="aspect-[16/10] w-full"
-                  sizes="(max-width: 1024px) 100vw, 800px"
                 />
               </button>
             </div>
@@ -108,7 +113,7 @@ export default function VehicleDetails() {
             <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
               {images.map((img, i) => (
                 <button
-                  key={img.publicId}
+                  key={img.filePath}
                   onClick={() => setActive(i)}
                   className={
                     'h-20 w-28 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition ' +
@@ -116,11 +121,11 @@ export default function VehicleDetails() {
                   }
                 >
                   <VehicleImage
-                    publicId={img.publicId}
+                    filePath={img.filePath}
                     alt={img.alt}
+                    preset="thumb"
                     fit="contain"
                     className="h-full w-full"
-                    sizes="112px"
                   />
                 </button>
               ))}

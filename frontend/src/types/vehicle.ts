@@ -1,4 +1,4 @@
-/** Shared vehicle domain types (mirrors the Prisma model on the backend). */
+/** Shared vehicle domain types (mirrors the API response shape). */
 
 export type VehicleCategory =
   | 'SUV'
@@ -12,15 +12,24 @@ export type Transmission = 'Automatic' | 'Manual';
 export type FuelType = 'Petrol' | 'Diesel' | 'Hybrid' | 'Electric';
 
 /**
- * A single image is stored as a Cloudinary publicId plus lightweight metadata.
- * The delivery URL is derived at render time via `cld(publicId, …)`, so a
- * Cloudinary re-upload to the same publicId updates the site with zero code.
+ * A single image reference is just an ImageKit `filePath` plus lightweight
+ * metadata. The delivery URL is derived at render time via
+ * `ik(filePath, preset)` — the same filePath can render at any named
+ * preset (hero/card/gallery/thumb) with zero extra requests or re-uploads.
  */
-export type VehicleImage = {
-  publicId: string;
+export type VehicleImageRef = {
+  filePath: string;
   alt: string;
-  /** e.g. "front" | "rear" | "side" | "interior" | "dashboard" | "wheel" | "engine" */
+} | null;
+
+export type VehicleGalleryImage = {
+  filePath: string;
+  alt: string;
+  /** front | rear | side | left | right | interior | exterior | dashboard | engine | wheel | 360 | thumbnail | gallery */
   tag?: string;
+  isHero: boolean;
+  isCover: boolean;
+  displayOrder: number;
 };
 
 export interface Vehicle {
@@ -53,10 +62,9 @@ export interface Vehicle {
   description: string;
   features: string[];
 
-  /** Cloudinary bookkeeping */
-  cloudinaryFolder: string;
-  heroImage: string; // publicId
-  coverImage: string; // publicId
-  thumbnail: string; // publicId
-  gallery: VehicleImage[];
+  // ── ImageKit (single source of truth) ──
+  heroImage: VehicleImageRef;
+  coverImage: VehicleImageRef;
+  thumbnail: VehicleImageRef;
+  gallery: VehicleGalleryImage[];
 }

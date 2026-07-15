@@ -2,7 +2,9 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
-  readonly VITE_CLOUDINARY_CLOUD_NAME?: string;
+  /** Public — safe to expose. Used to build ImageKit delivery URLs. */
+  readonly VITE_IMAGEKIT_URL_ENDPOINT?: string;
+  readonly VITE_IMAGEKIT_PUBLIC_KEY?: string;
 }
 
 interface ImportMeta {

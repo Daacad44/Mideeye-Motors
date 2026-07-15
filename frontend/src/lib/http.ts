@@ -16,13 +16,16 @@ export function setAccessToken(token: string | null) {
 }
 export const getAccessToken = () => accessToken;
 
-/** Error carrying the HTTP status so callers can branch on it. */
+/** Error carrying the HTTP status + parsed body so callers can branch on it
+ * (e.g. a 409 "image in use" response includes `usedBy`/`blocked` details). */
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  body?: unknown;
+  constructor(message: string, status: number, body?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -91,7 +94,7 @@ export async function http<T = unknown>(path: string, init: RequestInit = {}, re
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const msg = res.status === 401 && !retry ? 'Your session has expired. Please sign in again.' : messageFromBody(body, res.status);
-    throw new ApiError(msg, res.status);
+    throw new ApiError(msg, res.status, body);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -118,7 +121,7 @@ export function uploadWithProgress<T = unknown>(
       } else {
         let body: unknown = {};
         try { body = JSON.parse(xhr.responseText); } catch { /* ignore */ }
-        reject(new ApiError(messageFromBody(body, xhr.status), xhr.status));
+        reject(new ApiError(messageFromBody(body, xhr.status), xhr.status, body));
       }
     };
     xhr.onerror = () =>

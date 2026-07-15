@@ -185,11 +185,11 @@ export default function Booking() {
 
               <div className="mt-4 overflow-hidden rounded-2xl bg-gradient-to-b from-mist-200 to-white">
                 <VehicleImage
-                  publicId={vehicle?.coverImage}
-                  alt={vehicle?.title ?? 'Vehicle'}
+                  filePath={vehicle?.coverImage?.filePath}
+                  alt={vehicle?.coverImage?.alt || vehicle?.title || 'Vehicle'}
+                  preset="card"
                   fit="contain"
                   className="aspect-[16/9] w-full"
-                  sizes="360px"
                 />
               </div>
               <h4 className="mt-3 font-display font-bold text-navy-700">{vehicle?.title}</h4>

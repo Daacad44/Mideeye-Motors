@@ -1,37 +1,36 @@
 import { useState } from 'react';
-import { cld, cldSrcSet, cldBlur, type CldOptions } from '@/lib/cloudinary';
+import { ik, ikSrcSet, type Preset } from '@/lib/imagekitImages';
 import { cn } from '@/lib/cn';
 
 type Props = {
-  publicId: string | undefined | null;
+  filePath: string | undefined | null;
   alt: string;
   className?: string;
   imgClassName?: string;
-  /** transform options for the primary source */
-  options?: CldOptions;
-  /** responsive widths for srcSet */
-  widths?: number[];
+  /** Named ImageKit preset (maps to a `tr=` transformation string). */
+  preset?: Preset;
+  /** Additional presets to include in `srcset` for responsive loading. */
+  srcSetPresets?: Preset[];
   sizes?: string;
   priority?: boolean;
-  /** contain (studio cutout) vs cover (photo fill) */
+  /** CSS object-fit — independent of the preset's own server-side crop. */
   fit?: 'contain' | 'cover';
   rounded?: boolean;
 };
 
 /**
- * Renders a Cloudinary-backed image entirely from a `publicId`.
- * - Derives an optimised, format-negotiated URL + responsive srcSet.
- * - Blur-up placeholder while loading, native lazy-loading.
- * - Falls back to a branded silhouette if the id is missing / not yet
- *   uploaded, so the layout is always intact.
+ * Renders an ImageKit-backed image from a `filePath` + named preset.
+ * - Native lazy-loading, skeleton shimmer while loading.
+ * - Falls back to a branded silhouette if the path is missing / not yet
+ *   uploaded, so the layout is always intact — never a broken image request.
  */
 export function VehicleImage({
-  publicId,
+  filePath,
   alt,
   className,
   imgClassName,
-  options,
-  widths,
+  preset = 'card',
+  srcSetPresets,
   sizes = '(max-width: 768px) 100vw, 50vw',
   priority = false,
   fit = 'contain',
@@ -40,45 +39,20 @@ export function VehicleImage({
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
 
-  const crop = fit === 'cover' ? 'fill' : 'fit';
-  const src = cld(publicId, { crop, gravity: 'auto', ...options });
-  const srcSet = cldSrcSet(publicId, widths, { crop, gravity: 'auto', ...options });
-  const blur = cldBlur(publicId);
+  const src = ik(filePath, preset);
+  const srcSet = srcSetPresets ? ikSrcSet(filePath, srcSetPresets) : undefined;
 
   return (
-    <div
-      className={cn(
-        'relative overflow-hidden',
-        rounded && 'rounded-2xl',
-        className,
-      )}
-    >
-      {/* Blur / skeleton layer */}
-      {!loaded && !errored && (
-        <div
-          aria-hidden
-          className="absolute inset-0 skeleton"
-          style={
-            publicId
-              ? {
-                  backgroundImage: `url(${blur})`,
-                  backgroundSize: fit,
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  filter: 'blur(8px)',
-                }
-              : undefined
-          }
-        />
-      )}
+    <div className={cn('relative overflow-hidden', rounded && 'rounded-2xl', className)}>
+      {!loaded && !errored && filePath && <div aria-hidden className="absolute inset-0 skeleton" />}
 
-      {errored || !publicId ? (
+      {errored || !filePath || !src ? (
         <FallbackCar className={cn('h-full w-full', imgClassName)} />
       ) : (
         <img
           src={src}
           srcSet={srcSet}
-          sizes={sizes}
+          sizes={srcSet ? sizes : undefined}
           alt={alt}
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
@@ -97,7 +71,7 @@ export function VehicleImage({
   );
 }
 
-/** On-brand placeholder used before real Cloudinary uploads exist. */
+/** On-brand placeholder used before real photos exist. */
 function FallbackCar({ className }: { className?: string }) {
   return (
     <div className={cn('grid place-items-center bg-mist-200', className)}>

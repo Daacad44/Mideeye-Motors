@@ -6,13 +6,34 @@ import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 export const vehiclesRouter = Router();
 
-/** Shape a Prisma vehicle (with images) into the API contract. */
+const vehicleInclude = {
+  heroImage: true,
+  coverImage: true,
+  thumbnail: true,
+  gallery: { orderBy: { displayOrder: 'asc' as const }, include: { image: true } },
+};
+
+/**
+ * Shape a Prisma vehicle into the API contract. Every image field is a
+ * `filePath` (ImageKit's stored path) — the frontend builds whichever
+ * preset URL it needs (hero/card/gallery/thumb) via `tr=` params from that
+ * single path; the API never pre-resolves one specific preset.
+ */
 function serialize(v: any) {
+  const { heroImageId, coverImageId, thumbnailId, heroImage, coverImage, thumbnail, gallery, ...rest } = v;
   return {
-    ...v,
-    gallery: (v.gallery ?? [])
-      .sort((a: any, b: any) => a.position - b.position)
-      .map((g: any) => ({ publicId: g.publicId, alt: g.alt, tag: g.tag })),
+    ...rest,
+    heroImage: heroImage ? { filePath: heroImage.filePath, alt: heroImage.altText } : null,
+    coverImage: coverImage ? { filePath: coverImage.filePath, alt: coverImage.altText } : null,
+    thumbnail: thumbnail ? { filePath: thumbnail.filePath, alt: thumbnail.altText } : null,
+    gallery: (gallery ?? []).map((g: any) => ({
+      filePath: g.image.filePath,
+      alt: g.alt || g.image.altText,
+      tag: g.tag,
+      isHero: g.isHero,
+      isCover: g.isCover,
+      displayOrder: g.displayOrder,
+    })),
   };
 }
 
@@ -30,7 +51,7 @@ vehiclesRouter.get('/', async (req, res) => {
       ...(featured ? { featured: true } : {}),
       ...(category ? { category: category as any } : {}),
     },
-    include: { gallery: true },
+    include: vehicleInclude,
     orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
   });
 
@@ -43,7 +64,7 @@ vehiclesRouter.get('/', async (req, res) => {
 vehiclesRouter.get('/:slug', async (req, res) => {
   const vehicle = await prisma.vehicle.findUnique({
     where: { slug: req.params.slug },
-    include: { gallery: true },
+    include: vehicleInclude,
   });
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
   res.json({ data: serialize(vehicle) });
@@ -55,12 +76,12 @@ const updateSchema = z.object({
   pricePerMonth: z.number().int().positive().optional(),
   featured: z.boolean().optional(),
   availability: z.boolean().optional(),
-  heroImage: z.string().optional(),
-  coverImage: z.string().optional(),
-  thumbnail: z.string().optional(),
+  heroImageId: z.string().nullable().optional(),
+  coverImageId: z.string().nullable().optional(),
+  thumbnailId: z.string().nullable().optional(),
 });
 
-// PATCH /api/vehicles/:id  (admin) — pricing / featured / availability / hero / cover
+// PATCH /api/vehicles/:id  (admin) — pricing / featured / availability / hero / cover / thumbnail
 vehiclesRouter.patch('/:id', authenticate, requireAdmin, async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -68,17 +89,24 @@ vehiclesRouter.patch('/:id', authenticate, requireAdmin, async (req, res) => {
   const vehicle = await prisma.vehicle.update({
     where: { id: req.params.id },
     data: parsed.data,
-    include: { gallery: true },
+    include: vehicleInclude,
   });
   await cacheInvalidate('vehicles:*');
   res.json({ data: serialize(vehicle) });
 });
 
 // PUT /api/vehicles/:id/gallery  (admin) — replace/reorder gallery
+// Body references MediaImage rows by their internal `id` (not the raw ImageKit fileId).
 vehiclesRouter.put('/:id/gallery', authenticate, requireAdmin, async (req, res) => {
   const schema = z.object({
     gallery: z.array(
-      z.object({ publicId: z.string(), alt: z.string().default(''), tag: z.string().optional() }),
+      z.object({
+        mediaImageId: z.string(),
+        alt: z.string().default(''),
+        tag: z.string().optional(),
+        isHero: z.boolean().default(false),
+        isCover: z.boolean().default(false),
+      }),
     ),
   });
   const parsed = schema.safeParse(req.body);
@@ -87,14 +115,19 @@ vehiclesRouter.put('/:id/gallery', authenticate, requireAdmin, async (req, res) 
   await prisma.$transaction([
     prisma.vehicleImage.deleteMany({ where: { vehicleId: req.params.id } }),
     prisma.vehicleImage.createMany({
-      data: parsed.data.gallery.map((g, i) => ({ ...g, position: i, vehicleId: req.params.id })),
+      data: parsed.data.gallery.map((g, i) => ({
+        imageId: g.mediaImageId,
+        alt: g.alt,
+        tag: g.tag,
+        isHero: g.isHero,
+        isCover: g.isCover,
+        displayOrder: i,
+        vehicleId: req.params.id,
+      })),
     }),
   ]);
   await cacheInvalidate('vehicles:*');
 
-  const vehicle = await prisma.vehicle.findUnique({
-    where: { id: req.params.id },
-    include: { gallery: true },
-  });
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: req.params.id }, include: vehicleInclude });
   res.json({ data: vehicle ? serialize(vehicle) : null });
 });
