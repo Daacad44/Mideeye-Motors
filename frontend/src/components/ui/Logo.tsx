@@ -3,7 +3,7 @@ import { cn } from '@/lib/cn';
 import { useLogoUrl } from '@/lib/branding';
 
 /**
- * Renders the OFFICIAL Mideeye Motors logo PNG (from Cloudinary / branding API).
+ * Renders the OFFICIAL Mideeye Motors logo PNG (from ImageKit via the branding API).
  *
  * There is intentionally NO text/CSS/SVG recreation of the logo. If the
  * official image has not been uploaded yet, we reserve the space with a

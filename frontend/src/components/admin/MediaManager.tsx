@@ -1,33 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   UploadCloud, Search, Trash2, RefreshCw, Check, Link2, Hash,
-  FolderOpen, X, Loader2, Image as ImageIcon, Pencil,
+  FolderOpen, X, Loader2, Image as ImageIcon, Pencil, ArrowUpDown, ShieldAlert,
 } from 'lucide-react';
-import { mediaApi } from '@/lib/mediaApi';
-import type { MediaAsset } from '@/types/media';
+import { mediaApi, type MediaSort } from '@/lib/mediaApi';
+import { ik } from '@/lib/imagekitImages';
+import { ApiError } from '@/lib/http';
+import type { MediaImage } from '@/types/media';
 
-function prettyBytes(n: number) {
+function prettyBytes(n: number | null) {
   if (!n) return '—';
   const u = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(n) / Math.log(1024));
   return `${(n / 1024 ** i).toFixed(1)} ${u[i]}`;
 }
 
+function baseName(filePath: string) {
+  return filePath.split('/').pop() || filePath;
+}
+
 export function MediaManager() {
-  const [assets, setAssets] = useState<MediaAsset[]>([]);
+  const [assets, setAssets] = useState<MediaImage[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('');
-  const [targetFolder, setTargetFolder] = useState('mideeye-motors/media');
+  const [sort, setSort] = useState<MediaSort>('createdAt');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [targetFolder, setTargetFolder] = useState('/mideeye-motors/media');
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string; ids?: string[]; usedBy: string[] } | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
@@ -37,7 +46,7 @@ export function MediaManager() {
     setLoading(true);
     setError(null);
     try {
-      const res = await mediaApi.list({ search: search || undefined, folder: folder || undefined });
+      const res = await mediaApi.list({ search: search || undefined, folder: folder || undefined, sort, order });
       setAssets(res.data);
       setFolders(res.folders);
     } catch (e) {
@@ -46,7 +55,7 @@ export function MediaManager() {
     } finally {
       setLoading(false);
     }
-  }, [search, folder]);
+  }, [search, folder, sort, order]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -57,7 +66,12 @@ export function MediaManager() {
     if (!files.length) return;
     setProgress(0);
     try {
-      await mediaApi.upload(files, { folder: targetFolder }, setProgress);
+      if (files.length === 1) {
+        await mediaApi.upload(files[0], { folder: targetFolder }, setProgress);
+      } else {
+        const res = await mediaApi.bulkUpload(files, { folder: targetFolder }, setProgress);
+        if (res.failed.length) setError(`${res.failed.length} file(s) failed: ${res.failed.map((f) => `${f.filename} (${f.error})`).join('; ')}`);
+      }
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -87,24 +101,48 @@ export function MediaManager() {
     } catch { /* ignore */ }
   };
 
-  const remove = async (id: string) => {
-    await mediaApi.remove(id).catch((e) => setError((e as Error).message));
-    setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
-    load();
+  const remove = async (id: string, force = false) => {
+    try {
+      await mediaApi.remove(id, force);
+      setConfirmDelete(null);
+      setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+      load();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const usedBy = (e.body as { usedBy?: { label: string }[] })?.usedBy ?? [];
+        setConfirmDelete({ id, usedBy: usedBy.map((u) => u.label) });
+      } else {
+        setError((e as Error).message);
+      }
+    }
   };
 
-  const bulkDelete = async () => {
+  const bulkDelete = async (force = false) => {
     if (!selected.size) return;
-    await mediaApi.bulkDelete([...selected]).catch((e) => setError((e as Error).message));
-    setSelected(new Set());
-    load();
+    try {
+      await mediaApi.bulkDelete([...selected], force);
+      setConfirmDelete(null);
+      setSelected(new Set());
+      load();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setConfirmDelete({ ids: [...selected], usedBy: [] });
+      } else {
+        setError((e as Error).message);
+      }
+    }
   };
 
   const saveRename = async () => {
     if (!editing) return;
-    await mediaApi.update(editing.id, { title: editing.value }).catch((e) => setError((e as Error).message));
+    await mediaApi.update(editing.id, { newFileName: editing.value }).catch((e) => setError((e as Error).message));
     setEditing(null);
     load();
+  };
+
+  const toggleSort = (field: MediaSort) => {
+    if (sort === field) setOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    else { setSort(field); setOrder('desc'); }
   };
 
   return (
@@ -116,7 +154,7 @@ export function MediaManager() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title, alt or public ID…"
+            placeholder="Search by path, alt, caption or tag…"
             className="w-full bg-transparent text-sm font-medium text-navy-700 focus:outline-none"
           />
         </label>
@@ -131,6 +169,18 @@ export function MediaManager() {
             {folders.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2.5">
+          <ArrowUpDown className="size-4 text-ink-400" />
+          <select
+            value={sort}
+            onChange={(e) => toggleSort(e.target.value as MediaSort)}
+            className="bg-transparent text-sm font-bold text-navy-700 focus:outline-none"
+          >
+            <option value="createdAt">Recently uploaded</option>
+            <option value="filePath">Name</option>
+            <option value="size">Size</option>
           </select>
         </div>
         <button onClick={load} className="grid size-10 place-items-center rounded-xl border border-line text-navy-700 hover:border-brand-400 hover:text-brand-600" aria-label="Refresh">
@@ -163,11 +213,11 @@ export function MediaManager() {
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-          {['mideeye-motors/brand', 'mideeye-motors/media', 'mideeye-motors/banner'].map((f) => (
+          {['/mideeye-motors/brand', '/mideeye-motors/media', '/mideeye-motors/banner'].map((f) => (
             <button key={f} type="button" onClick={() => setTargetFolder(f)}
               className={'rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors ' +
                 (targetFolder === f ? 'bg-brand-600 text-white' : 'bg-mist-200 text-navy-700 hover:bg-brand-100')}>
-              {f.split('/')[1] === 'brand' ? '🏷️ brand (official logo)' : f.split('/')[1]}
+              {f.split('/')[2] === 'brand' ? '🏷️ brand (official logo)' : f.split('/')[2]}
             </button>
           ))}
         </div>
@@ -188,8 +238,30 @@ export function MediaManager() {
 
       {error && (
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">
-          <X className="size-4" /> {error}
-          <span className="ml-auto text-red-400">Sign in as staff+ and ensure the API is running.</span>
+          <X className="size-4 shrink-0" /> {error}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13.5px] text-amber-700">
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="size-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">This image is in use{confirmDelete.usedBy.length ? `: ${confirmDelete.usedBy.join(', ')}` : ''}.</p>
+              <p className="mt-0.5">Deleting it will remove those references too.</p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => confirmDelete.id ? remove(confirmDelete.id, true) : bulkDelete(true)}
+                  className="rounded-lg bg-red-500 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-red-600"
+                >
+                  Delete anyway
+                </button>
+                <button onClick={() => setConfirmDelete(null)} className="rounded-lg border border-amber-300 px-3 py-1.5 text-[12px] font-bold text-amber-700">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -199,7 +271,7 @@ export function MediaManager() {
           <span className="text-sm font-bold">{selected.size} selected</span>
           <div className="flex gap-2">
             <button onClick={() => setSelected(new Set())} className="rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-white/10">Clear</button>
-            <button onClick={bulkDelete} className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-1.5 text-sm font-bold hover:bg-red-600">
+            <button onClick={() => bulkDelete()} className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-1.5 text-sm font-bold hover:bg-red-600">
               <Trash2 className="size-4" /> Delete
             </button>
           </div>
@@ -216,24 +288,27 @@ export function MediaManager() {
           <div className="rounded-3xl border border-line bg-white py-20 text-center">
             <ImageIcon className="mx-auto size-10 text-ink-400" />
             <p className="mt-3 font-display text-lg font-bold text-navy-700">No media yet</p>
-            <p className="mt-1 text-ink-400">Upload images above — they’ll be stored in Cloudinary and appear here.</p>
+            <p className="mt-1 text-ink-400">Upload images above — they’ll be stored in ImageKit and appear here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {assets.map((a) => (
               <div key={a.id} className={'group overflow-hidden rounded-2xl border bg-white transition ' + (selected.has(a.id) ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-line')}>
                 <div className="relative aspect-[4/3] bg-mist-200">
-                  <img src={a.thumbnailUrl || a.secureUrl} alt={a.altText || a.title} loading="lazy"
+                  <img src={ik(a.filePath, 'thumb')} alt={a.altText || baseName(a.filePath)} loading="lazy"
                     className="h-full w-full object-cover"
                     onError={(e) => (e.currentTarget.style.opacity = '0.15')} />
                   <label className="absolute left-2 top-2 grid size-6 cursor-pointer place-items-center rounded-md bg-white/90 shadow">
                     <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggle(a.id)} className="accent-brand-600" />
                   </label>
+                  {a.inUse && (
+                    <span className="absolute right-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white">In use</span>
+                  )}
                   <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Action title="Copy URL" onClick={() => copy(a.secureUrl, a.id + 'u')} active={copied === a.id + 'u'}><Link2 className="size-4" /></Action>
-                    <Action title="Copy public ID" onClick={() => copy(a.publicId, a.id + 'p')} active={copied === a.id + 'p'}><Hash className="size-4" /></Action>
+                    <Action title="Copy URL" onClick={() => copy(ik(a.filePath, 'card'), a.id + 'u')} active={copied === a.id + 'u'}><Link2 className="size-4" /></Action>
+                    <Action title="Copy ID (use on Fleet tab)" onClick={() => copy(a.id, a.id + 'p')} active={copied === a.id + 'p'}><Hash className="size-4" /></Action>
                     <Action title="Replace" onClick={() => { replaceTarget.current = a.id; replaceInput.current?.click(); }}><RefreshCw className="size-4" /></Action>
-                    <Action title="Rename" onClick={() => setEditing({ id: a.id, value: a.title })}><Pencil className="size-4" /></Action>
+                    <Action title="Rename" onClick={() => setEditing({ id: a.id, value: baseName(a.filePath) })}><Pencil className="size-4" /></Action>
                     <Action title="Delete" danger onClick={() => remove(a.id)}><Trash2 className="size-4" /></Action>
                   </div>
                 </div>
@@ -246,13 +321,13 @@ export function MediaManager() {
                       <button onClick={saveRename} className="grid size-7 place-items-center rounded-lg bg-brand-600 text-white"><Check className="size-4" /></button>
                     </div>
                   ) : (
-                    <div className="truncate text-[13.5px] font-bold text-navy-700">{a.title || 'Untitled'}</div>
+                    <div className="truncate text-[13.5px] font-bold text-navy-700">{a.caption || baseName(a.filePath)}</div>
                   )}
                   <div className="mt-0.5 flex items-center justify-between text-[11px] text-ink-400">
-                    <span className="truncate">{a.format?.toUpperCase() || 'IMG'} · {a.width}×{a.height}</span>
-                    <span>{prettyBytes(a.bytes)}</span>
+                    <span className="truncate">{a.mimeType?.replace('image/', '').toUpperCase() || 'IMG'} · {a.width ?? '—'}×{a.height ?? '—'}</span>
+                    <span>{prettyBytes(a.size)}</span>
                   </div>
-                  <code className="mt-1 block truncate text-[10.5px] text-ink-400">{a.publicId}</code>
+                  <code className="mt-1 block truncate text-[10.5px] text-ink-400" title="MediaImage ID — use this to attach the image on the Fleet tab">{a.id}</code>
                 </div>
               </div>
             ))}

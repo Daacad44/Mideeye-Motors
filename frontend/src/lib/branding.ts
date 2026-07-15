@@ -1,47 +1,70 @@
 import { useEffect, useState } from 'react';
-import { cld } from './cloudinary';
-import { LOGO_PUBLIC_ID } from './brand';
 
 /**
- * Resolves the OFFICIAL logo URL.
+ * Site-wide branding — a thin client over `GET /api/branding`.
  *
- * 1. Asks the API for the logo an admin uploaded to the brand folder
- *    (`/api/branding`) — this is the real, dynamic source of truth.
- * 2. Falls back to the configured Cloudinary publicId (VITE_LOGO_PUBLIC_ID).
- *
- * The result is cached module-wide so every <Logo/> shares one request.
- * We never render generated text/SVG in place of the logo.
+ * The API resolves the OFFICIAL logo (and favicon/hero) that an admin
+ * uploaded via the Media Library into a ready-to-use delivery URL, so the
+ * frontend never needs to know a filePath or ImageKit preset scheme for
+ * these fields. We never render generated text/SVG in place of the logo —
+ * if none has been uploaded yet, `logo` is simply `null`.
  */
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 
-let cache: Promise<string | null> | null = null;
+export interface BrandingImage {
+  url: string;
+  alt: string;
+}
 
-export function loadLogoUrl(): Promise<string | null> {
+export interface Branding {
+  logo: BrandingImage | null;
+  favicon: BrandingImage | null;
+  heroImage: BrandingImage | null;
+  primaryColor: string;
+  phone: string;
+  email: string;
+  socials: Record<string, string>;
+}
+
+const EMPTY: Branding = {
+  logo: null,
+  favicon: null,
+  heroImage: null,
+  primaryColor: '#0b67c2',
+  phone: '',
+  email: '',
+  socials: {},
+};
+
+let cache: Promise<Branding> | null = null;
+
+export function loadBranding(): Promise<Branding> {
   if (cache) return cache;
   cache = (async () => {
     try {
       const res = await fetch(`${API_URL}/branding`, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.logoUrl) return json.logoUrl as string;
-        if (json.logoPublicId) return cld(json.logoPublicId, { height: 120, crop: 'fit' });
-      }
+      if (res.ok) return (await res.json()) as Branding;
     } catch {
-      /* fall through to the configured publicId */
+      /* network error — fall through to empty branding (placeholder logo) */
     }
-    return cld(LOGO_PUBLIC_ID, { height: 120, crop: 'fit' });
+    return EMPTY;
   })();
   return cache;
 }
 
-export function useLogoUrl(): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+export function useBranding(): Branding {
+  const [branding, setBranding] = useState<Branding>(EMPTY);
   useEffect(() => {
     let alive = true;
-    loadLogoUrl().then((u) => alive && setUrl(u));
+    loadBranding().then((b) => alive && setBranding(b));
     return () => {
       alive = false;
     };
   }, []);
-  return url;
+  return branding;
+}
+
+/** Convenience hook for components that only need the logo URL. */
+export function useLogoUrl(): string | null {
+  return useBranding().logo?.url ?? null;
 }

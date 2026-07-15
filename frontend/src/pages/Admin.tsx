@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
-  Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock,
+  Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
-import { cld } from '@/lib/cloudinary';
+import { ik } from '@/lib/imagekitImages';
+import { vehiclesApi } from '@/lib/vehiclesApi';
 import { formatCurrency } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
 import { MediaManager } from '@/components/admin/MediaManager';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { ButtonLink } from '@/components/ui/Button';
-import type { Vehicle, VehicleImage as VImg } from '@/types/vehicle';
+import type { Vehicle, VehicleGalleryImage } from '@/types/vehicle';
 
 type Tab = 'fleet' | 'media' | 'users' | 'audit';
 
@@ -52,7 +53,7 @@ export default function Admin() {
           <span className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white"><LayoutDashboard className="size-5" /></span>
           <div>
             <div className="font-display font-bold text-white">Admin Dashboard</div>
-            <div className="text-[12px] text-brand-100/60">Central management · Cloudinary media</div>
+            <div className="text-[12px] text-brand-100/60">Central management · ImageKit media</div>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-brand-100 sm:inline">
@@ -89,9 +90,28 @@ function FleetPanel() {
   const { vehicles: initial } = useVehicles();
   const [fleet, setFleet] = useState<Vehicle[]>([]);
   const [managing, setManaging] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setFleet(initial), [initial]);
-  const patch = (id: string, p: Partial<Vehicle>) => setFleet((f) => f.map((v) => (v.id === id ? { ...v, ...p } : v)));
+  const patchLocal = (id: string, p: Partial<Vehicle>) => setFleet((f) => f.map((v) => (v.id === id ? { ...v, ...p } : v)));
+
+  const patchPricing = async (id: string, pricePerDay: number) => {
+    patchLocal(id, { pricePerDay });
+    try {
+      await vehiclesApi.patch(id, { pricePerDay });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const toggle = async (id: string, field: 'featured' | 'availability', value: boolean) => {
+    patchLocal(id, { [field]: value } as Partial<Vehicle>);
+    try {
+      await vehiclesApi.patch(id, { [field]: value });
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   const kpis = useMemo(() => [
     { icon: Car, label: 'Total vehicles', value: fleet.length },
@@ -114,6 +134,8 @@ function FleetPanel() {
         ))}
       </div>
 
+      {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+
       <div className="mt-8 rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
         <h2 className="mb-4 font-display text-lg font-bold text-navy-700">Manage fleet</h2>
         <div className="overflow-x-auto">
@@ -130,7 +152,7 @@ function FleetPanel() {
                   <td className="py-3">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-mist-200">
-                        <VehicleImage publicId={v.thumbnail} alt={v.title} fit="contain" className="h-full w-full" sizes="56px" />
+                        <VehicleImage filePath={v.thumbnail?.filePath} alt={v.thumbnail?.alt || v.title} preset="thumb" fit="contain" className="h-full w-full" />
                       </div>
                       <div><div className="font-bold text-navy-700">{v.title}</div><div className="text-[12px] text-ink-400">{v.category} · {v.brand}</div></div>
                     </div>
@@ -138,12 +160,12 @@ function FleetPanel() {
                   <td className="py-3">
                     <div className="inline-flex items-center rounded-lg border border-line px-2">
                       <span className="text-ink-400">$</span>
-                      <input type="number" value={v.pricePerDay} onChange={(e) => patch(v.id, { pricePerDay: Number(e.target.value) })}
+                      <input type="number" value={v.pricePerDay} onChange={(e) => patchPricing(v.id, Number(e.target.value))}
                         className="w-16 bg-transparent py-1.5 font-bold text-navy-700 focus:outline-none" />
                     </div>
                   </td>
-                  <td className="py-3 text-center"><Toggle on={v.featured} onClick={() => patch(v.id, { featured: !v.featured })} /></td>
-                  <td className="py-3 text-center"><Toggle on={v.availability} onClick={() => patch(v.id, { availability: !v.availability })} /></td>
+                  <td className="py-3 text-center"><Toggle on={v.featured} onClick={() => toggle(v.id, 'featured', !v.featured)} /></td>
+                  <td className="py-3 text-center"><Toggle on={v.availability} onClick={() => toggle(v.id, 'availability', !v.availability)} /></td>
                   <td className="py-3 text-right">
                     <button onClick={() => setManaging(v.id)} className="inline-flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
                       <ImageIcon className="size-4" /> {v.gallery.length} images
@@ -156,7 +178,13 @@ function FleetPanel() {
         </div>
       </div>
 
-      {active && <ImageManager vehicle={active} onClose={() => setManaging(null)} onChange={(p) => patch(active.id, p)} />}
+      {active && (
+        <ImageManager
+          vehicle={active}
+          onClose={() => setManaging(null)}
+          onChange={(p) => patchLocal(active.id, p)}
+        />
+      )}
     </div>
   );
 }
@@ -169,15 +197,68 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   );
 }
 
+/**
+ * Per-vehicle gallery editor. Images are attached by pasting a MediaImage
+ * `id` (visible + copyable on each card in the Media Library tab) — upload
+ * the real photo there first, then attach it here. Every action here calls
+ * the real vehicles API (PATCH hero/cover/thumbnail, PUT gallery), so
+ * changes are persisted immediately, not just local UI state.
+ */
 function ImageManager({ vehicle, onClose, onChange }: { vehicle: Vehicle; onClose: () => void; onChange: (p: Partial<Vehicle>) => void }) {
-  const [gallery, setGallery] = useState<VImg[]>(vehicle.gallery);
+  // `vehicle.gallery` (the prop) is the single source of truth — never
+  // duplicated into local state. Each mutation below computes the next
+  // array, persists it, then applies the SERVER'S response (which resolves
+  // pasted MediaImage ids to real ImageKit filePaths) via `onChange`, so
+  // the UI always reflects what's actually saved, not an optimistic guess.
+  const gallery = vehicle.gallery;
+  const [addId, setAddId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const commit = (g: VImg[]) => { setGallery(g); onChange({ gallery: g }); };
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir; if (j < 0 || j >= gallery.length) return;
-    const g = [...gallery]; [g[i], g[j]] = [g[j], g[i]]; commit(g);
+  const persistGallery = async (slots: { mediaImageId: string; alt?: string; tag?: string; isHero?: boolean; isCover?: boolean }[]) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await vehiclesApi.putGallery(vehicle.id, slots);
+      onChange({ gallery: res.data.gallery });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
-  const remove = (i: number) => commit(gallery.filter((_, idx) => idx !== i));
+
+  const toSlots = (g: VehicleGalleryImage[]) =>
+    g.map((img) => ({ mediaImageId: img.filePath, alt: img.alt, tag: img.tag, isHero: img.isHero, isCover: img.isCover }));
+
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= gallery.length) return;
+    const g = [...gallery];
+    [g[i], g[j]] = [g[j], g[i]];
+    persistGallery(toSlots(g));
+  };
+
+  const remove = (i: number) => persistGallery(toSlots(gallery.filter((_, idx) => idx !== i)));
+
+  const addImage = () => {
+    if (!addId.trim()) return;
+    persistGallery([...toSlots(gallery), { mediaImageId: addId.trim(), alt: vehicle.title, tag: 'gallery' }]);
+    setAddId('');
+  };
+
+  const setField = async (field: 'heroImageId' | 'coverImageId' | 'thumbnailId', mediaImageId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await vehiclesApi.patch(vehicle.id, { [field]: mediaImageId });
+      onChange(res.data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
@@ -185,48 +266,73 @@ function ImageManager({ vehicle, onClose, onChange }: { vehicle: Vehicle; onClos
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display text-xl font-bold text-navy-700">{vehicle.title}</h3>
-            <p className="text-[13px] text-ink-400">Cloudinary folder: {vehicle.cloudinaryFolder}</p>
+            <p className="text-[13px] text-ink-400">{busy ? 'Saving…' : 'ImageKit'}</p>
           </div>
           <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
         </div>
 
+        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+
         <div className="mt-5 flex items-center gap-3 rounded-2xl bg-brand-100/60 p-4 text-[13px] text-navy-700">
           <Upload className="size-8 shrink-0 text-brand-600" />
-          <span>Upload real photos in the <b>Media Library</b> tab (folder <code>{vehicle.cloudinaryFolder}</code>), then set hero/cover here.</span>
+          <span>Upload the real photo in the <b>Media Library</b> tab, copy its <b>image ID</b>, then paste it below to attach it here.</span>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 text-[13px]">
-          <div className="rounded-2xl border border-line p-3">
-            <div className="mb-1 flex items-center gap-2 font-bold text-navy-700"><Crown className="size-4 text-amber-500" /> Hero</div>
-            <code className="break-all text-[11px] text-ink-400">{vehicle.heroImage}</code>
-          </div>
-          <div className="rounded-2xl border border-line p-3">
-            <div className="mb-1 flex items-center gap-2 font-bold text-navy-700"><LayoutTemplate className="size-4 text-brand-600" /> Cover</div>
-            <code className="break-all text-[11px] text-ink-400">{vehicle.coverImage}</code>
-          </div>
+        <div className="mt-4 flex gap-2">
+          <input value={addId} onChange={(e) => setAddId(e.target.value)} placeholder="Paste MediaImage ID to add to gallery…"
+            className="flex-1 rounded-xl border border-line px-3 py-2.5 text-[13px] font-mono text-navy-700 focus:border-brand-400 focus:outline-none" />
+          <button onClick={addImage} disabled={busy || !addId.trim()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-700 disabled:opacity-50">
+            <Plus className="size-4" /> Add
+          </button>
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-3 text-[13px]">
+          <ImageSlot label="Hero" icon={Crown} image={vehicle.heroImage} onSet={(id) => setField('heroImageId', id)} />
+          <ImageSlot label="Cover" icon={LayoutTemplate} image={vehicle.coverImage} onSet={(id) => setField('coverImageId', id)} />
+          <ImageSlot label="Thumbnail" icon={ImageIcon} image={vehicle.thumbnail} onSet={(id) => setField('thumbnailId', id)} />
         </div>
 
         <div className="mt-6 space-y-3">
           <h4 className="font-bold text-navy-700">Gallery ({gallery.length})</h4>
           {gallery.map((img, i) => (
-            <div key={img.publicId + i} className="flex items-center gap-3 rounded-2xl border border-line p-2.5">
-              <img src={cld(img.publicId, { width: 140, height: 90, crop: 'fill' })} alt={img.alt}
+            <div key={img.filePath + i} className="flex items-center gap-3 rounded-2xl border border-line p-2.5">
+              <img src={ik(img.filePath, 'thumb')} alt={img.alt}
                 className="h-14 w-20 shrink-0 rounded-lg bg-mist-200 object-cover" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[13.5px] font-semibold text-navy-700">{img.tag ?? 'image'}</div>
-                <code className="block truncate text-[11px] text-ink-400">{img.publicId}</code>
+                <code className="block truncate text-[11px] text-ink-400">{img.filePath}</code>
               </div>
               <div className="flex shrink-0 gap-1">
-                <IB onClick={() => onChange({ heroImage: img.publicId })} title="Set hero"><Crown className="size-4" /></IB>
-                <IB onClick={() => onChange({ coverImage: img.publicId })} title="Set cover"><LayoutTemplate className="size-4" /></IB>
                 <IB onClick={() => move(i, -1)} title="Up"><ArrowUp className="size-4" /></IB>
                 <IB onClick={() => move(i, 1)} title="Down"><ArrowDown className="size-4" /></IB>
                 <IB onClick={() => remove(i)} title="Delete" danger><Trash2 className="size-4" /></IB>
               </div>
             </div>
           ))}
+          {gallery.length === 0 && <p className="text-center text-[13px] text-ink-400">No gallery images yet.</p>}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ImageSlot({ label, icon: Icon, image, onSet }: { label: string; icon: React.ElementType; image: Vehicle['heroImage']; onSet: (mediaImageId: string) => void }) {
+  return (
+    <div className="rounded-2xl border border-line p-3">
+      <div className="mb-2 flex items-center gap-2 font-bold text-navy-700"><Icon className="size-4 text-brand-500" /> {label}</div>
+      <div className="mb-2 aspect-video overflow-hidden rounded-lg bg-mist-200">
+        {image ? <img src={ik(image.filePath, 'card')} alt={image.alt} className="h-full w-full object-cover" /> : null}
+      </div>
+      <button
+        onClick={() => {
+          const id = window.prompt(`Paste MediaImage ID to set as ${label.toLowerCase()}:`);
+          if (id?.trim()) onSet(id.trim());
+        }}
+        className="w-full rounded-lg border border-line px-2 py-1.5 text-[12px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600"
+      >
+        Set {label.toLowerCase()}
+      </button>
     </div>
   );
 }

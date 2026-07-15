@@ -41,10 +41,13 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       # Same-origin via the nginx /api proxy → reflect origin (also fine cross-origin).
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
-      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-mideeye-motors}
+      IMAGEKIT_PUBLIC_KEY: ${IMAGEKIT_PUBLIC_KEY}
+      IMAGEKIT_PRIVATE_KEY: ${IMAGEKIT_PRIVATE_KEY}
+      IMAGEKIT_URL_ENDPOINT: ${IMAGEKIT_URL_ENDPOINT}
+      SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-daacaddeveloper@gmail.com}
+      SEED_SUPER_ADMIN_PASSWORD: ${SEED_SUPER_ADMIN_PASSWORD:-Daacad@44Xxv}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@mideeyemotors.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin1234}
     expose:
       - '4000'
 
@@ -54,8 +57,8 @@ services:
       args:
         # Same-origin: the browser calls /api and nginx proxies to the api service.
         VITE_API_URL: ${VITE_API_URL:-/api}
-        VITE_CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
-        VITE_LOGO_PUBLIC_ID: ${VITE_LOGO_PUBLIC_ID:-mideeye-motors/brand/logo}
+        VITE_IMAGEKIT_PUBLIC_KEY: ${IMAGEKIT_PUBLIC_KEY}
+        VITE_IMAGEKIT_URL_ENDPOINT: ${IMAGEKIT_URL_ENDPOINT}
     restart: unless-stopped
     depends_on:
       - api

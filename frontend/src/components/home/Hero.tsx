@@ -78,13 +78,12 @@ export function Hero() {
           >
             <div className="absolute inset-0 animate-float">
               <VehicleImage
-                publicId={hero?.heroImage}
-                alt="Toyota Land Cruiser 2024"
+                filePath={hero?.heroImage?.filePath}
+                alt={hero?.heroImage?.alt || 'Toyota Land Cruiser 2024'}
+                preset="hero"
                 fit="contain"
                 priority
                 className="h-full w-full drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-                sizes="(max-width: 1024px) 90vw, 640px"
-                widths={[480, 768, 1024, 1440]}
               />
             </div>
 

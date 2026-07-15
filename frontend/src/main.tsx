@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import App from './App';
-import { loadLogoUrl } from './lib/branding';
+import { loadBranding } from './lib/branding';
 import './index.css';
 
 // Favicon + PWA manifest are generated from the OFFICIAL logo — no local asset.
-loadLogoUrl().then((logoUrl) => {
+loadBranding().then(({ logo, favicon: brandFavicon }) => {
+  const logoUrl = brandFavicon?.url ?? logo?.url;
   if (!logoUrl) return;
   const favicon = document.getElementById('favicon') as HTMLLinkElement | null;
   if (favicon) favicon.href = logoUrl;

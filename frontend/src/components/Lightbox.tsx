@@ -2,8 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
-import type { VehicleImage as VImg } from '@/types/vehicle';
-import { cld } from '@/lib/cloudinary';
+import { ik } from '@/lib/imagekitImages';
+
+export interface LightboxImage {
+  filePath: string;
+  alt: string;
+  tag?: string;
+}
 
 export function Lightbox({
   images,
@@ -11,7 +16,7 @@ export function Lightbox({
   onClose,
   onNavigate,
 }: {
-  images: VImg[];
+  images: LightboxImage[];
   index: number;
   onClose: () => void;
   onNavigate: (i: number) => void;
@@ -87,8 +92,8 @@ export function Lightbox({
           </button>
 
           <motion.img
-            key={current?.publicId}
-            src={cld(current?.publicId, { width: 1600, crop: 'fit' })}
+            key={current?.filePath}
+            src={ik(current?.filePath, 'gallery')}
             alt={current?.alt}
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: zoom ? 1.6 : 1 }}
@@ -112,7 +117,7 @@ export function Lightbox({
         >
           {images.map((img, i) => (
             <button
-              key={img.publicId}
+              key={img.filePath}
               onClick={() => { onNavigate(i); setZoom(false); }}
               className={
                 'h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition ' +
@@ -120,7 +125,7 @@ export function Lightbox({
               }
             >
               <img
-                src={cld(img.publicId, { width: 200, height: 130, crop: 'fill' })}
+                src={ik(img.filePath, 'thumb')}
                 alt={img.alt}
                 className="h-full w-full object-cover"
               />

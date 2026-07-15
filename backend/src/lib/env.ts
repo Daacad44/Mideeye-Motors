@@ -1,26 +1,78 @@
 import 'dotenv/config';
+import { z } from 'zod';
 
-function required(key: string, fallback?: string): string {
-  const v = process.env[key] ?? fallback;
-  if (v === undefined) {
-    console.warn(`[env] Missing ${key} — using empty string`);
-    return '';
+/**
+ * Fail-fast, validated environment. ImageKit credentials are server-side
+ * only — the frontend never receives the private key, only the public key
+ * + URL endpoint (safe to expose, needed to build/authenticate uploads).
+ */
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().int().positive().default(4000),
+  CORS_ORIGIN: z.string().default('*'),
+
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  REDIS_URL: z.string().optional().default(''),
+
+  JWT_SECRET: z.string().min(1).default('dev-secret-change-me'),
+  JWT_EXPIRES_IN: z.string().default('7d'),
+
+  // ── ImageKit (server-side only, except the two VITE_ mirrors below) ──
+  IMAGEKIT_PUBLIC_KEY: z.string().min(1, 'IMAGEKIT_PUBLIC_KEY is required'),
+  IMAGEKIT_PRIVATE_KEY: z.string().min(1, 'IMAGEKIT_PRIVATE_KEY is required'),
+  IMAGEKIT_URL_ENDPOINT: z.string().url().default('https://ik.imagekit.io/unset'),
+
+  // ── Seed accounts (idempotent; env-overridable per deployment) ──
+  SEED_ADMIN_EMAIL: z.string().email().default('admin@mideeyemotors.com'),
+  SEED_ADMIN_PASSWORD: z.string().min(6).default('admin1234'),
+  SEED_SUPER_ADMIN_EMAIL: z.string().email().default('daacaddeveloper@gmail.com'),
+  SEED_SUPER_ADMIN_PASSWORD: z.string().min(6).default('Daacad@44Xxv'),
+});
+
+const parsed = schema.safeParse(process.env);
+
+if (!parsed.success) {
+  // Fail fast and loud — a missing ImageKit/DB var should never surface
+  // later as an opaque 500 during a request.
+  console.error('❌ Invalid/missing environment variables:');
+  for (const issue of parsed.error.issues) {
+    console.error(`   ${issue.path.join('.')}: ${issue.message}`);
   }
-  return v;
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 }
 
+// In development, fall back to permissive defaults so `npm run dev` still
+// boots for unrelated work (vehicles/auth) without real ImageKit creds;
+// media upload routes will return a clear error until they're set.
+const data = parsed.success
+  ? parsed.data
+  : schema.parse({
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://invalid/invalid',
+      IMAGEKIT_PUBLIC_KEY: process.env.IMAGEKIT_PUBLIC_KEY || 'unset',
+      IMAGEKIT_PRIVATE_KEY: process.env.IMAGEKIT_PRIVATE_KEY || 'unset',
+    });
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? 'development',
-  port: Number(process.env.PORT ?? 4000),
-  corsOrigin: process.env.CORS_ORIGIN ?? '*',
-  databaseUrl: required('DATABASE_URL'),
-  redisUrl: process.env.REDIS_URL ?? '',
-  jwtSecret: required('JWT_SECRET', 'dev-secret-change-me'),
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
-  cloudinary: {
-    cloudName: required('CLOUDINARY_CLOUD_NAME'),
-    apiKey: required('CLOUDINARY_API_KEY'),
-    apiSecret: required('CLOUDINARY_API_SECRET'),
-    folder: process.env.CLOUDINARY_FOLDER ?? 'mideeye-motors',
+  nodeEnv: data.NODE_ENV,
+  port: data.PORT,
+  corsOrigin: data.CORS_ORIGIN,
+  databaseUrl: data.DATABASE_URL,
+  redisUrl: data.REDIS_URL,
+  jwtSecret: data.JWT_SECRET,
+  jwtExpiresIn: data.JWT_EXPIRES_IN,
+  imagekit: {
+    publicKey: data.IMAGEKIT_PUBLIC_KEY,
+    privateKey: data.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: data.IMAGEKIT_URL_ENDPOINT,
+    configured: data.IMAGEKIT_PUBLIC_KEY !== 'unset' && data.IMAGEKIT_PRIVATE_KEY !== 'unset',
+  },
+  seed: {
+    adminEmail: data.SEED_ADMIN_EMAIL,
+    adminPassword: data.SEED_ADMIN_PASSWORD,
+    superAdminEmail: data.SEED_SUPER_ADMIN_EMAIL,
+    superAdminPassword: data.SEED_SUPER_ADMIN_PASSWORD,
   },
 };
