@@ -38,9 +38,12 @@ const EMPTY: Branding = {
 
 let cache: Promise<Branding> | null = null;
 
-export function loadBranding(): Promise<Branding> {
-  if (cache) return cache;
-  cache = (async () => {
+// Simple subscription so live components (header/footer) re-render when an
+// admin changes the logo, without a full page reload.
+const listeners = new Set<(b: Branding) => void>();
+
+function fetchBranding(): Promise<Branding> {
+  return (async () => {
     try {
       const res = await fetch(`${API_URL}/branding`, { signal: AbortSignal.timeout(4000) });
       if (res.ok) return (await res.json()) as Branding;
@@ -49,7 +52,24 @@ export function loadBranding(): Promise<Branding> {
     }
     return EMPTY;
   })();
+}
+
+export function loadBranding(): Promise<Branding> {
+  if (cache) return cache;
+  cache = fetchBranding();
   return cache;
+}
+
+/**
+ * Invalidate the cache, refetch, and push the fresh branding to every mounted
+ * `useBranding()` consumer. Call after an admin sets/changes the logo so the
+ * header and footer update immediately.
+ */
+export async function refreshBranding(): Promise<Branding> {
+  cache = fetchBranding();
+  const b = await cache;
+  listeners.forEach((fn) => fn(b));
+  return b;
 }
 
 export function useBranding(): Branding {
@@ -57,8 +77,11 @@ export function useBranding(): Branding {
   useEffect(() => {
     let alive = true;
     loadBranding().then((b) => alive && setBranding(b));
+    const fn = (b: Branding) => alive && setBranding(b);
+    listeners.add(fn);
     return () => {
       alive = false;
+      listeners.delete(fn);
     };
   }, []);
   return branding;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  LayoutDashboard, Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
+  Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
   Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -13,6 +13,7 @@ import { MediaManager } from '@/components/admin/MediaManager';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { ButtonLink } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import type { Vehicle, VehicleGalleryImage } from '@/types/vehicle';
 
 type Tab = 'fleet' | 'media' | 'users' | 'audit';
@@ -39,47 +40,103 @@ export default function Admin() {
   }
 
   const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
-  const tabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
+  const allTabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
     { id: 'media', label: 'Media Library', icon: Images, show: true },
     { id: 'fleet', label: 'Fleet', icon: Car, show: true },
     { id: 'users', label: 'Team & Roles', icon: Users, show: isAdmin },
     { id: 'audit', label: 'Audit Log', icon: ScrollText, show: isAdmin },
   ];
+  const tabs = allTabs.filter((t) => t.show);
+
+  const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
-    <div className="min-h-screen bg-mist-100">
-      <div className="border-b border-line bg-navy-950">
-        <div className="mx-auto flex max-w-[1360px] items-center gap-3 px-5 py-4 lg:px-8">
-          <span className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white"><LayoutDashboard className="size-5" /></span>
-          <div>
-            <div className="font-display font-bold text-white">Admin Dashboard</div>
-            <div className="text-[12px] text-brand-100/60">Central management · ImageKit media</div>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="hidden rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-brand-100 sm:inline">
-              {user?.email} · {user?.role}
-            </span>
-            <button onClick={logout} className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-[13px] font-bold text-white hover:bg-white/20">
-              <LogOut className="size-4" /> Logout
-            </button>
-          </div>
+    <div className="min-h-screen bg-mist-100 lg:flex">
+      {/* ── Sidebar (desktop) ── */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/5 bg-navy-950 lg:flex">
+        <div className="flex h-20 items-center gap-2 border-b border-white/5 px-5">
+          <Logo variant="light" height={34} />
         </div>
-        <div className="mx-auto flex max-w-[1360px] gap-1 overflow-x-auto px-5 lg:px-8">
-          {tabs.filter((t) => t.show).map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={'inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold transition-colors ' +
-                (tab === t.id ? 'border-brand-500 text-white' : 'border-transparent text-brand-100/60 hover:text-white')}>
-              <t.icon className="size-4" /> {t.label}
+
+        <nav className="flex-1 space-y-1 p-4">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold transition-colors ' +
+                (tab === t.id
+                  ? 'bg-brand-600 text-white shadow-[0_8px_20px_-8px_rgba(11,103,194,0.8)]'
+                  : 'text-brand-100/60 hover:bg-white/5 hover:text-white')
+              }
+            >
+              <t.icon className="size-[18px]" /> {t.label}
             </button>
           ))}
-        </div>
-      </div>
+        </nav>
 
-      <div className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
-        {tab === 'media' && <MediaManager />}
-        {tab === 'fleet' && <FleetPanel />}
-        {tab === 'users' && <UsersPanel />}
-        {tab === 'audit' && <AuditPanel />}
+        <div className="border-t border-white/5 p-4">
+          <div className="mb-3 rounded-xl bg-white/5 px-3 py-2.5">
+            <div className="truncate text-[12.5px] font-bold text-white">{user?.name || user?.email}</div>
+            <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-brand-300">{user?.role}</div>
+          </div>
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2 rounded-xl bg-white/5 px-3.5 py-2.5 text-[13px] font-bold text-white hover:bg-white/10"
+          >
+            <LogOut className="size-4" /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main column ── */}
+      <div className="min-w-0 flex-1">
+        {/* Top bar (mobile logo + role; desktop page title) */}
+        <header className="sticky top-0 z-20 border-b border-line bg-white/80 backdrop-blur">
+          <div className="flex items-center gap-3 px-5 py-4 lg:px-8">
+            <div className="lg:hidden">
+              <Logo height={30} />
+            </div>
+            <div className="hidden items-center gap-2 lg:flex">
+              <activeTab.icon className="size-5 text-brand-600" />
+              <h1 className="font-display text-lg font-extrabold text-navy-700">{activeTab.label}</h1>
+            </div>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="hidden rounded-full bg-mist-200 px-3 py-1.5 text-[12.5px] font-semibold text-navy-700 sm:inline lg:hidden">
+                {user?.role}
+              </span>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-2 rounded-xl bg-mist-200 px-3 py-1.5 text-[13px] font-bold text-navy-700 hover:bg-brand-100 lg:hidden"
+              >
+                <LogOut className="size-4" /> Logout
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile tab strip */}
+          <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ' +
+                  (tab === t.id ? 'bg-brand-600 text-white' : 'text-ink-500 hover:bg-mist-200')
+                }
+              >
+                <t.icon className="size-4" /> {t.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
+          {tab === 'media' && <MediaManager />}
+          {tab === 'fleet' && <FleetPanel />}
+          {tab === 'users' && <UsersPanel />}
+          {tab === 'audit' && <AuditPanel />}
+        </main>
       </div>
     </div>
   );
