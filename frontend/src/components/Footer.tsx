@@ -1,29 +1,33 @@
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, ArrowRight } from 'lucide-react';
 import { Logo } from './ui/Logo';
+import { LocaleSwitcher } from './LocaleSwitcher';
+import { useI18n } from '@/context/LocaleContext';
 
 const cols = [
   {
-    title: 'Company',
+    titleKey: 'footer.company',
     links: [
-      { label: 'About Us', to: '/about' },
-      { label: 'Our Fleet', to: '/fleet' },
-      { label: 'Services', to: '/services' },
-      { label: 'Pricing', to: '/pricing' },
+      { key: 'footer.about', to: '/about' },
+      { key: 'footer.fleet', to: '/fleet' },
+      { key: 'footer.services', to: '/services' },
+      { key: 'footer.pricing', to: '/pricing' },
     ],
   },
   {
-    title: 'Support',
+    titleKey: 'footer.support',
     links: [
-      { label: 'Contact', to: '/contact' },
-      { label: 'Booking', to: '/booking' },
-      { label: 'FAQ', to: '/contact' },
-      { label: 'Terms', to: '/contact' },
+      { key: 'footer.contact', to: '/contact' },
+      { key: 'footer.faq', to: '/faq' },
+      { key: 'footer.terms', to: '/terms' },
+      { key: 'footer.privacy', to: '/privacy' },
     ],
   },
 ];
 
 export function Footer() {
+  const { t } = useI18n();
+
   return (
     <footer className="relative overflow-hidden bg-navy-950 text-white">
       <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand-500/20 blur-3xl" />
@@ -34,9 +38,7 @@ export function Footer() {
           <div>
             <Logo variant="light" />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-brand-100/70">
-              Premium car rental across Somalia. Command every journey with a
-              spotless, fully-insured fleet — from the legendary Land Cruiser to
-              executive sedans.
+              {t('footer.tagline')}
             </p>
             <div className="mt-6 flex gap-3">
               {[Facebook, Instagram, Twitter].map((Icon, i) => (
@@ -53,18 +55,18 @@ export function Footer() {
           </div>
 
           {cols.map((col) => (
-            <div key={col.title}>
+            <div key={col.titleKey}>
               <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
-                {col.title}
+                {t(col.titleKey)}
               </h4>
               <ul className="space-y-3">
                 {col.links.map((l) => (
-                  <li key={l.label}>
+                  <li key={l.key}>
                     <Link
                       to={l.to}
                       className="text-sm text-brand-100/70 transition-colors hover:text-brand-300"
                     >
-                      {l.label}
+                      {t(l.key)}
                     </Link>
                   </li>
                 ))}
@@ -74,7 +76,7 @@ export function Footer() {
 
           <div>
             <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
-              Get in touch
+              {t('footer.getInTouch')}
             </h4>
             <ul className="space-y-4 text-sm text-brand-100/80">
               <li className="flex items-center gap-3">
@@ -92,14 +94,14 @@ export function Footer() {
               to="/booking"
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
             >
-              Reserve a car <ArrowRight className="size-4" />
+              {t('footer.reserve')} <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-brand-100/60 sm:flex-row">
-          <p>© {new Date().getFullYear()} Mideeye Motors & Rental Car Co. All rights reserved.</p>
-          <p>Designed for the road ahead.</p>
+          <p>© {new Date().getFullYear()} Mideeye Motors & Rental Car Co. {t('footer.rights')}</p>
+          <LocaleSwitcher variant="light" />
         </div>
       </div>
     </footer>

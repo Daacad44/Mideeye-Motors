@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, Car, CreditCard, ArrowRight, Lock } from 'lucide-react';
 import { VehicleImage } from '@/components/VehicleImage';
 import { ButtonLink } from '@/components/ui/Button';
-import { formatCurrency } from '@/lib/cn';
+import { useCurrency } from '@/context/LocaleContext';
 import { useAuth } from '@/context/AuthContext';
 import { bookingsApi, type Booking, type BookingStatus } from '@/lib/bookingsApi';
 
@@ -29,6 +29,7 @@ const initials = (name: string) =>
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
+  const { money } = useCurrency();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function Dashboard() {
   const stats = [
     { icon: CalendarDays, label: 'Active bookings', value: String(activeCount) },
     { icon: Car, label: 'Trips taken', value: String(tripsTaken) },
-    { icon: CreditCard, label: 'Total spent', value: formatCurrency(totalSpent) },
+    { icon: CreditCard, label: 'Total spent', value: money(totalSpent) },
   ];
 
   return (
@@ -150,7 +151,7 @@ export default function Dashboard() {
                           {label[b.status]}
                         </span>
                       </td>
-                      <td className="py-4 text-right font-bold text-navy-700">{formatCurrency(b.total)}</td>
+                      <td className="py-4 text-right font-bold text-navy-700">{money(b.total)}</td>
                       <td className="py-4 text-right">
                         {b.vehicle?.slug && (
                           <Link to={`/fleet/${b.vehicle.slug}`} className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:underline">

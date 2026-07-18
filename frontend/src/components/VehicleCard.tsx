@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { Vehicle } from '@/types/vehicle';
 import { VehicleImage } from './VehicleImage';
-import { formatCurrency } from '@/lib/cn';
+import { useCurrency, useI18n } from '@/context/LocaleContext';
 
 export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: number }) {
   const [fav, setFav] = useState(false);
+  const { money } = useCurrency();
+  const { t } = useI18n();
 
   return (
     <motion.article
@@ -71,7 +73,7 @@ export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: 
 
         {/* Specs */}
         <div className="my-4 grid grid-cols-3 gap-2 border-y border-line py-3 text-[12.5px] text-ink-500">
-          <Spec icon={<Users className="size-4" />} label={`${vehicle.seats} Seats`} />
+          <Spec icon={<Users className="size-4" />} label={`${vehicle.seats} ${t('fleet.seats')}`} />
           <Spec icon={<Gauge className="size-4" />} label={vehicle.transmission} />
           <Spec icon={<Fuel className="size-4" />} label={vehicle.fuelType} />
         </div>
@@ -80,9 +82,9 @@ export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: 
         <div className="mt-auto flex items-end justify-between">
           <div>
             <span className="font-display text-2xl font-extrabold text-navy-700">
-              {formatCurrency(vehicle.pricePerDay)}
+              {money(vehicle.pricePerDay)}
             </span>
-            <span className="text-[13px] font-medium text-ink-400"> / day</span>
+            <span className="text-[13px] font-medium text-ink-400"> {t('common.perDay')}</span>
           </div>
           <button
             type="button"
@@ -98,13 +100,13 @@ export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: 
             to={`/booking?vehicle=${vehicle.slug}`}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-navy-700"
           >
-            Book Now <ArrowRight className="size-4" />
+            {t('common.bookNow')} <ArrowRight className="size-4" />
           </Link>
           <Link
             to={`/fleet/${vehicle.slug}`}
             className="inline-flex items-center justify-center rounded-xl border border-line px-4 py-3 text-sm font-bold text-navy-700 transition-colors hover:border-brand-400 hover:text-brand-600"
           >
-            View
+            {t('common.view')}
           </Link>
         </div>
       </div>

@@ -3,21 +3,24 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Phone, Menu, X, ArrowRight } from 'lucide-react';
 import { Logo } from './ui/Logo';
 import { ButtonLink } from './ui/Button';
+import { LocaleSwitcher } from './LocaleSwitcher';
+import { useI18n } from '@/context/LocaleContext';
 import { cn } from '@/lib/cn';
 
 const links = [
-  { label: 'Home', to: '/' },
-  { label: 'Fleet', to: '/fleet' },
-  { label: 'Pricing', to: '/pricing' },
-  { label: 'About', to: '/about' },
-  { label: 'Services', to: '/services' },
-  { label: 'Contact', to: '/contact' },
+  { key: 'nav.home', to: '/' },
+  { key: 'nav.fleet', to: '/fleet' },
+  { key: 'nav.pricing', to: '/pricing' },
+  { key: 'nav.about', to: '/about' },
+  { key: 'nav.services', to: '/services' },
+  { key: 'nav.contact', to: '/contact' },
 ];
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { t } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -57,12 +60,15 @@ export function Navbar() {
                 )
               }
             >
-              {l.label}
+              {t(l.key)}
             </NavLink>
           ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <div className="hidden md:block">
+            <LocaleSwitcher />
+          </div>
           <a
             href="tel:+252612345678"
             className="hidden items-center gap-2 text-sm font-semibold text-navy-700 xl:flex"
@@ -76,10 +82,10 @@ export function Navbar() {
             to="/login"
             className="hidden rounded-xl border border-line px-5 py-2.5 text-sm font-bold text-navy-700 transition-colors hover:border-brand-400 hover:text-brand-600 sm:inline-flex"
           >
-            Login
+            {t('common.login')}
           </Link>
           <ButtonLink to="/booking" size="sm" className="hidden sm:inline-flex">
-            Book Now <ArrowRight className="size-4" />
+            {t('common.bookNow')} <ArrowRight className="size-4" />
           </ButtonLink>
           <button
             type="button"
@@ -108,18 +114,19 @@ export function Navbar() {
                   )
                 }
               >
-                {l.label}
+                {t(l.key)}
               </NavLink>
             ))}
+            <div className="mt-3 px-1"><LocaleSwitcher /></div>
             <div className="mt-2 flex gap-3">
               <Link
                 to="/login"
                 className="flex-1 rounded-xl border border-line px-5 py-3 text-center text-sm font-bold text-navy-700"
               >
-                Login
+                {t('common.login')}
               </Link>
               <ButtonLink to="/booking" className="flex-1">
-                Book Now <ArrowRight className="size-4" />
+                {t('common.bookNow')} <ArrowRight className="size-4" />
               </ButtonLink>
             </div>
           </nav>

@@ -4,14 +4,16 @@ import { ButtonLink } from '../ui/Button';
 import { VehicleImage } from '../VehicleImage';
 import { SearchCard } from './SearchCard';
 import { getVehicleBySlug } from '@/data/vehicles';
+import { useI18n } from '@/context/LocaleContext';
 
 const stats = [
-  { value: '150+', label: 'Premium Cars' },
-  { value: '12K+', label: 'Happy Renters' },
-  { value: '4.9', label: 'Avg. Rating' },
+  { value: '150+', labelKey: 'hero.statCars' },
+  { value: '12K+', labelKey: 'hero.statRenters' },
+  { value: '4.9', labelKey: 'hero.statRating' },
 ];
 
 export function Hero() {
+  const { t } = useI18n();
   const hero = getVehicleBySlug('toyota-land-cruiser-2024');
 
   return (
@@ -31,37 +33,36 @@ export function Hero() {
           >
             <div className="mb-5 inline-flex items-center gap-2.5 text-[12.5px] font-bold uppercase tracking-[0.18em] text-brand-300">
               <span className="h-[3px] w-6 rounded-full bg-amber-500" />
-              The 2024 Land Cruiser Collection
+              {t('hero.badge')}
             </div>
             <h1 className="font-display text-[46px] font-extrabold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-[70px]">
-              Command
+              {t('hero.titleTop')}
               <br />
-              Every <span className="text-gradient">Journey</span>
+              {t('hero.titleMid')} <span className="text-gradient">{t('hero.titleHi')}</span>
             </h1>
             <p className="mt-6 max-w-md text-[17px] leading-relaxed text-brand-100/80">
-              Premium SUVs, executive sedans and the legendary Land Cruiser —
-              delivered spotless, fully insured, and ready the moment you are.
+              {t('hero.subtitle')}
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3.5">
               <ButtonLink to="/fleet" size="lg">
-                Explore the Fleet <ArrowRight className="size-4" />
+                {t('hero.exploreFleet')} <ArrowRight className="size-4" />
               </ButtonLink>
               <ButtonLink to="/booking" size="lg" variant="outline-light">
-                Quick Book
+                {t('hero.quickBook')}
               </ButtonLink>
             </div>
 
             <div className="mt-11 flex flex-wrap gap-8">
               {stats.map((s, i) => (
-                <div key={s.label} className="flex items-center gap-8">
+                <div key={s.labelKey} className="flex items-center gap-8">
                   {i > 0 && <span className="h-9 w-px bg-white/15" />}
                   <div>
                     <div className="font-display text-3xl font-extrabold leading-none text-white">
                       {s.value}
                     </div>
                     <div className="mt-1.5 text-[13px] font-semibold text-brand-100/60">
-                      {s.label}
+                      {t(s.labelKey)}
                     </div>
                   </div>
                 </div>
@@ -107,7 +108,7 @@ export function Hero() {
               transition={{ delay: 0.75 }}
             >
               <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-100/70">
-                From
+                {t('common.from')}
               </div>
               <div className="font-display text-[22px] font-extrabold leading-tight text-white">
                 $120<span className="text-[13px] font-semibold text-brand-100/70"> /day</span>

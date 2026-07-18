@@ -3,6 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { SlidersHorizontal, Search } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleCard } from '@/components/VehicleCard';
+import { useI18n } from '@/context/LocaleContext';
+import { useSeo } from '@/lib/seo';
 import type { VehicleCategory } from '@/types/vehicle';
 
 const categories: (VehicleCategory | 'All')[] = [
@@ -18,6 +20,8 @@ const categories: (VehicleCategory | 'All')[] = [
 type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating';
 
 export default function Fleet() {
+  const { t } = useI18n();
+  useSeo({ title: t('fleet.title'), description: t('fleet.subtitle', { count: '' }).trim() });
   const { vehicles, loading } = useVehicles();
   const [params] = useSearchParams();
   const [active, setActive] = useState<VehicleCategory | 'All'>(
@@ -59,14 +63,13 @@ export default function Fleet() {
         <div className="pointer-events-none absolute -right-16 -top-28 size-96 rounded-full bg-brand-500/25 blur-3xl" />
         <div className="relative mx-auto max-w-[1360px] px-5 py-16 lg:px-8">
           <nav className="mb-3 text-[13px] font-semibold text-brand-300">
-            <Link to="/" className="hover:text-white">Home</Link> / Fleet
+            <Link to="/" className="hover:text-white">{t('nav.home')}</Link> / {t('nav.fleet')}
           </nav>
           <h1 className="font-display text-4xl font-extrabold text-white lg:text-[46px]">
-            Explore Our Fleet
+            {t('fleet.title')}
           </h1>
           <p className="mt-3 max-w-lg text-[17px] text-brand-100/80">
-            {vehicles.length} premium vehicles, meticulously maintained and ready
-            for the road.
+            {t('fleet.subtitle', { count: vehicles.length })}
           </p>
         </div>
       </section>
@@ -86,7 +89,7 @@ export default function Fleet() {
                     : 'bg-mist-200 text-navy-700 hover:bg-brand-100')
                 }
               >
-                {c}
+                {c === 'All' ? t('common.all') : c}
               </button>
             ))}
           </div>
@@ -97,7 +100,8 @@ export default function Fleet() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search vehicles…"
+                placeholder={t('fleet.searchPlaceholder')}
+                aria-label={t('common.search')}
                 className="w-full bg-transparent text-sm font-medium text-navy-700 focus:outline-none"
               />
             </label>
@@ -108,10 +112,10 @@ export default function Fleet() {
                 onChange={(e) => setSort(e.target.value as SortKey)}
                 className="bg-transparent text-sm font-bold text-navy-700 focus:outline-none"
               >
-                <option value="featured">Featured</option>
-                <option value="price-asc">Price ↑</option>
-                <option value="price-desc">Price ↓</option>
-                <option value="rating">Top rated</option>
+                <option value="featured">{t('fleet.sortFeatured')}</option>
+                <option value="price-asc">{t('fleet.sortPriceAsc')}</option>
+                <option value="price-desc">{t('fleet.sortPriceDesc')}</option>
+                <option value="rating">{t('fleet.sortRating')}</option>
               </select>
             </div>
           </div>
@@ -135,9 +139,9 @@ export default function Fleet() {
         ) : (
           <div className="rounded-3xl border border-line bg-white py-24 text-center">
             <p className="font-display text-xl font-bold text-navy-700">
-              No vehicles match your search
+              {t('fleet.emptyTitle')}
             </p>
-            <p className="mt-2 text-ink-400">Try a different category or keyword.</p>
+            <p className="mt-2 text-ink-400">{t('fleet.emptySub')}</p>
           </div>
         )}
       </section>

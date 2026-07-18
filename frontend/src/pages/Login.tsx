@@ -4,6 +4,8 @@ import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
 import { Mail, Lock, ArrowLeft, User, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/context/LocaleContext';
+import { useSeo } from '@/lib/seo';
 import { authApi } from '@/lib/authApi';
 
 type Mode = 'login' | 'register' | 'forgot';
@@ -11,6 +13,8 @@ type Mode = 'login' | 'register' | 'forgot';
 export default function Login() {
   const [mode, setMode] = useState<Mode>('login');
   const { login, register } = useAuth();
+  const { t } = useI18n();
+  useSeo({ title: t('auth.signIn') });
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +51,12 @@ export default function Login() {
 
   const field = 'w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
 
-  const heading = mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create account' : 'Reset password';
+  const heading = mode === 'login' ? t('auth.welcomeBack') : mode === 'register' ? t('auth.createAccount') : 'Reset password';
   const subtext =
     mode === 'login'
-      ? 'Sign in to your Mideeye Motors account.'
+      ? t('auth.signInSub')
       : mode === 'register'
-        ? 'Join Mideeye Motors in seconds.'
+        ? t('auth.registerSub')
         : 'Enter your email and we’ll send you a reset link.';
 
   return (
@@ -80,7 +84,7 @@ export default function Login() {
       <div className="flex items-center justify-center bg-mist-100 px-5 py-16">
         <div className="w-full max-w-md">
           <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-ink-400 hover:text-brand-600">
-            <ArrowLeft className="size-4" /> Back to home
+            <ArrowLeft className="size-4" /> {t('auth.backHome')}
           </Link>
           <h1 className="font-display text-3xl font-extrabold text-navy-700">{heading}</h1>
           <p className="mt-2 text-ink-500">{subtext}</p>
@@ -101,19 +105,19 @@ export default function Login() {
                 {mode === 'register' && (
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-                    <input className={field} placeholder="Full name" required value={form.name}
+                    <input className={field} placeholder={t('auth.fullName')} required value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })} />
                   </div>
                 )}
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-                  <input type="email" className={field} placeholder="Email address" required value={form.email}
+                  <input type="email" className={field} placeholder={t('auth.email')} required value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
                 {mode !== 'forgot' && (
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
-                    <input type="password" className={field} placeholder="Password" required value={form.password}
+                    <input type="password" className={field} placeholder={t('auth.password')} required value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })} />
                   </div>
                 )}
@@ -121,13 +125,13 @@ export default function Login() {
                   <div className="text-right">
                     <button type="button" onClick={() => switchMode('forgot')}
                       className="text-[13px] font-semibold text-brand-600 hover:underline">
-                      Forgot password?
+                      {t('auth.forgot')}
                     </button>
                   </div>
                 )}
                 {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-[13.5px] font-medium text-red-600">{error}</p>}
                 <Button type="submit" size="lg" variant="secondary" className="w-full" disabled={busy}>
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send reset link'}
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : mode === 'login' ? t('auth.signIn') : mode === 'register' ? t('auth.register') : 'Send reset link'}
                 </Button>
               </form>
 
@@ -140,12 +144,12 @@ export default function Login() {
                 </p>
               ) : (
                 <p className="mt-6 text-center text-[14.5px] text-ink-500">
-                  {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                  {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
                   <button
                     onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
                     className="font-bold text-brand-600 hover:underline"
                   >
-                    {mode === 'login' ? 'Register' : 'Sign in'}
+                    {mode === 'login' ? t('auth.register') : t('auth.signIn')}
                   </button>
                 </p>
               )}
