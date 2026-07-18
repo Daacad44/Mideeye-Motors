@@ -66,7 +66,7 @@ export default function Login() {
         <div className="pointer-events-none absolute inset-0 dotted-grid opacity-40" />
         <div className="pointer-events-none absolute -right-16 top-1/3 size-96 rounded-full bg-amber-500/20 blur-3xl" />
         <div className="relative flex h-full flex-col justify-between p-12">
-          <Logo variant="light" />
+          <Logo variant="plain" height={64} />
           <div>
             <h2 className="font-display text-4xl font-extrabold leading-tight text-white">
               Command every<br /><span className="text-gradient">journey.</span>
@@ -83,6 +83,8 @@ export default function Login() {
       {/* Form side */}
       <div className="flex items-center justify-center bg-mist-100 px-5 py-16">
         <div className="w-full max-w-md">
+          {/* Brand mark for mobile, where the dark visual panel is hidden */}
+          <div className="mb-8 flex justify-center lg:hidden"><Logo height={52} /></div>
           <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-ink-400 hover:text-brand-600">
             <ArrowLeft className="size-4" /> {t('auth.backHome')}
           </Link>
