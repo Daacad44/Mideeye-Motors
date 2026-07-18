@@ -1,5 +1,6 @@
 import { http } from './http';
 import type { Vehicle } from '@/types/vehicle';
+import type { Payment, PaymentStatus } from './paymentsApi';
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
@@ -26,6 +27,11 @@ export interface Booking {
   vehicle: Vehicle | null;
   /** Present on the admin list only (the account the booking is linked to). */
   user?: { id: string; name: string; email: string };
+  /** Derived payment summary (see the booking serialize). */
+  paymentStatus: PaymentStatus | null;
+  amountPaid: number;
+  /** Individual payment attempts, newest first. */
+  payments?: Payment[];
 }
 
 export interface CreateBookingPayload {

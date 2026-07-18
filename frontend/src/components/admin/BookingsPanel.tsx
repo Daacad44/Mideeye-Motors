@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Clock, Activity, DollarSign } from 'lucide-react';
+import { ClipboardList, Clock, Activity, DollarSign, BadgeCheck } from 'lucide-react';
 import { VehicleImage } from '@/components/VehicleImage';
 import { bookingsApi, type Booking, type BookingStatus } from '@/lib/bookingsApi';
+import { paymentsApi, type PaymentStatus } from '@/lib/paymentsApi';
 import { formatCurrency } from '@/lib/cn';
 
 const STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
@@ -12,6 +13,13 @@ const statusBadge: Record<BookingStatus, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700',
   COMPLETED: 'bg-mist-200 text-ink-500',
   CANCELLED: 'bg-red-100 text-red-600',
+};
+
+const payBadge: Record<PaymentStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  PAID: 'bg-emerald-100 text-emerald-700',
+  FAILED: 'bg-red-100 text-red-600',
+  REFUNDED: 'bg-mist-200 text-ink-500',
 };
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -41,6 +49,18 @@ export function BookingsPanel() {
     } catch (e) {
       setError((e as Error).message);
       setBookings(prev); // roll back the optimistic change
+    }
+  };
+
+  // Verify a manual payment → marks it PAID and confirms the booking; reload
+  // so the derived payment/booking status refresh together.
+  const verifyPayment = async (paymentId: string) => {
+    setError(null);
+    try {
+      await paymentsApi.verify(paymentId, 'PAID');
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
     }
   };
 
@@ -87,10 +107,10 @@ export function BookingsPanel() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead>
               <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
-                <th className="p-4">Customer</th><th className="p-4">Vehicle</th><th className="p-4">Dates</th><th className="p-4">Status</th><th className="p-4 text-right">Total</th>
+                <th className="p-4">Customer</th><th className="p-4">Vehicle</th><th className="p-4">Dates</th><th className="p-4">Status</th><th className="p-4">Payment</th><th className="p-4 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -122,14 +142,35 @@ export function BookingsPanel() {
                       {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
+                  <td className="p-4">
+                    {(() => {
+                      const pending = b.payments?.find((p) => p.status === 'PENDING' && p.provider === 'manual');
+                      return (
+                        <div className="space-y-1.5">
+                          <span className={'inline-block rounded-lg px-2 py-1 text-[12px] font-bold ' + (b.paymentStatus ? payBadge[b.paymentStatus] : 'bg-mist-200 text-ink-400')}>
+                            {b.paymentStatus ?? 'UNPAID'}
+                          </span>
+                          {pending && (
+                            <button
+                              onClick={() => verifyPayment(pending.id)}
+                              title={pending.reference ? `Ref: ${pending.reference}` : undefined}
+                              className="flex items-center gap-1.5 rounded-lg border border-line px-2 py-1 text-[12px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600"
+                            >
+                              <BadgeCheck className="size-3.5" /> Verify payment
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="p-4 text-right font-bold text-navy-700">{formatCurrency(b.total)}</td>
                 </tr>
               ))}
               {loading && (
-                <tr><td colSpan={5} className="py-12 text-center"><span className="inline-block size-7 animate-spin rounded-full border-2 border-line border-t-brand-600" /></td></tr>
+                <tr><td colSpan={6} className="py-12 text-center"><span className="inline-block size-7 animate-spin rounded-full border-2 border-line border-t-brand-600" /></td></tr>
               )}
               {!loading && rows.length === 0 && (
-                <tr><td colSpan={5} className="py-12 text-center text-ink-400">No bookings{filter ? ` with status ${filter}` : ''} yet.</td></tr>
+                <tr><td colSpan={6} className="py-12 text-center text-ink-400">No bookings{filter ? ` with status ${filter}` : ''} yet.</td></tr>
               )}
             </tbody>
           </table>

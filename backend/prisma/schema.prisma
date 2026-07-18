@@ -55,6 +55,13 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model Vehicle {
   id            String       @id @default(cuid())
   title         String
@@ -135,6 +142,7 @@ model User {
 
   bookings      Booking[]
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   uploads       MediaImage[]   @relation("UploadedBy")
   auditLogs     AuditLog[]
 
@@ -268,6 +276,42 @@ model Booking {
   status         BookingStatus @default(PENDING)
   createdAt      DateTime      @default(now())
 
+  payments       Payment[]
+
   @@index([vehicleId])
+  @@index([userId])
+}
+
+/// A payment attempt against a booking. Provider-agnostic: `provider` names the
+/// driver (manual mobile-money reference, mock, or a future gateway); money is
+/// always taken from the booking total server-side, never from the client.
+model Payment {
+  id         String        @id @default(cuid())
+
+  booking    Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId  String
+
+  provider   String        // 'manual' | 'mock' | <future gateway>
+  amount     Int
+  currency   String        @default("USD")
+  status     PaymentStatus @default(PENDING)
+  reference  String?       // customer-supplied (EVC/Zaad txn id) or gateway ref
+  paidAt     DateTime?
+
+  createdAt  DateTime      @default(now())
+
+  @@index([bookingId])
+}
+
+/// Single-use, expiring password-reset token emailed to the user.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
   @@index([userId])
 }

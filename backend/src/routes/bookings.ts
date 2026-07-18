@@ -7,22 +7,57 @@ import { audit } from '../lib/audit.js';
 import { authenticate, optionalAuthenticate, requireStaff } from '../middleware/auth.js';
 import { hasBookingConflict } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
+import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
 
 export const bookingsRouter = Router();
 
 const TAX_RATE = 0.05;
 
-/** A booking with its vehicle relation resolved to the API vehicle contract. */
+/**
+ * A booking with its vehicle resolved to the API vehicle contract, plus a
+ * derived payment summary (`paymentStatus` = PAID if any payment settled, else
+ * PENDING if one is awaiting verification, else the latest state or null;
+ * `amountPaid` = sum of settled payments).
+ */
 function serialize(b: any) {
-  const { vehicle, user, ...rest } = b;
+  const { vehicle, user, payments, ...rest } = b;
+  const list = payments ?? [];
+  const paid = list.filter((p: any) => p.status === 'PAID');
+  const paymentStatus = list.length
+    ? paid.length
+      ? 'PAID'
+      : list.some((p: any) => p.status === 'PENDING')
+        ? 'PENDING'
+        : list[0].status
+    : null;
   return {
     ...rest,
     vehicle: vehicle ? serializeVehicle(vehicle) : null,
     ...(user ? { user: { id: user.id, name: user.name, email: user.email } } : {}),
+    paymentStatus,
+    amountPaid: paid.reduce((s: number, p: any) => s + p.amount, 0),
+    ...(payments ? { payments } : {}),
   };
 }
 
-const bookingInclude = { vehicle: { include: vehicleInclude } };
+/** Map a booking (with vehicle included) to the notification payload. */
+function toNotice(b: any): BookingNotice {
+  return {
+    reference: b.reference,
+    customerName: b.customerName,
+    customerEmail: b.customerEmail,
+    customerPhone: b.customerPhone,
+    vehicleTitle: b.vehicle?.title ?? null,
+    total: b.total,
+    pickupDate: b.pickupDate,
+    returnDate: b.returnDate,
+  };
+}
+
+const bookingInclude = {
+  vehicle: { include: vehicleInclude },
+  payments: { orderBy: { createdAt: 'desc' as const } },
+};
 
 const schema = z.object({
   vehicleId: z.string(),
@@ -91,6 +126,7 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
 
   // A new booking changes the vehicle's date-range availability.
   await cacheInvalidate('vehicles:*');
+  await notifyBookingReceived(toNotice(booking));
   res.status(201).json({ data: serialize(booking) });
 });
 
@@ -154,5 +190,9 @@ bookingsRouter.patch('/:id/status', authenticate, requireStaff, async (req, res)
   });
   // Cancelling / completing frees the slot; any status change may affect availability.
   await cacheInvalidate('vehicles:*');
+  // Notify only on the actual transition into CONFIRMED.
+  if (existing.status !== 'CONFIRMED' && booking.status === 'CONFIRMED') {
+    await notifyBookingConfirmed(toNotice(booking));
+  }
   res.json({ data: serialize(booking) });
 });

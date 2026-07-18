@@ -9,6 +9,7 @@ import { env } from './lib/env.js';
 import { vehiclesRouter } from './routes/vehicles.js';
 import { authRouter } from './routes/auth.js';
 import { bookingsRouter } from './routes/bookings.js';
+import { paymentsRouter } from './routes/payments.js';
 import { adminMediaRouter } from './routes/adminMedia.js';
 import { adminRouter } from './routes/admin.js';
 import { brandingRouter } from './routes/branding.js';
@@ -50,6 +51,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/admin/media', adminMediaRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/payments', paymentsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err: Error & { status?: number; statusCode?: number; code?: string }, req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -22,6 +22,16 @@ const schema = z.object({
   IMAGEKIT_PRIVATE_KEY: z.string().min(1, 'IMAGEKIT_PRIVATE_KEY is required'),
   IMAGEKIT_URL_ENDPOINT: z.string().url().default('https://ik.imagekit.io/unset'),
 
+  // ── Public site URL (used to build password-reset links) ──
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+
+  // ── SMTP / email (all optional; unset ⇒ notifications log to console) ──
+  SMTP_HOST: z.string().optional().default(''),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASS: z.string().optional().default(''),
+  MAIL_FROM: z.string().default('Mideeye Motors <no-reply@mideeyemotors.com>'),
+
   // ── Seed accounts (idempotent; env-overridable per deployment) ──
   SEED_ADMIN_EMAIL: z.string().email().default('admin@mideeyemotors.com'),
   SEED_ADMIN_PASSWORD: z.string().min(6).default('admin1234'),
@@ -63,6 +73,16 @@ export const env = {
   redisUrl: data.REDIS_URL,
   jwtSecret: data.JWT_SECRET,
   jwtExpiresIn: data.JWT_EXPIRES_IN,
+  frontendUrl: data.FRONTEND_URL,
+  mail: {
+    host: data.SMTP_HOST,
+    port: data.SMTP_PORT,
+    user: data.SMTP_USER,
+    pass: data.SMTP_PASS,
+    from: data.MAIL_FROM,
+    // Like the ImageKit flag: no SMTP host ⇒ fall back to console logging.
+    configured: data.SMTP_HOST !== '',
+  },
   imagekit: {
     publicKey: data.IMAGEKIT_PUBLIC_KEY,
     privateKey: data.IMAGEKIT_PRIVATE_KEY,
