@@ -39,7 +39,7 @@ export function Navbar() {
     >
       <div className="mx-auto flex max-w-[1360px] items-center gap-7 px-5 py-3.5 lg:px-8">
         <Link to="/" aria-label="Mideeye Motors home" className="shrink-0">
-          <Logo />
+          <Logo height={52} />
         </Link>
 
         <nav className="ml-2 hidden items-center gap-1 lg:flex">

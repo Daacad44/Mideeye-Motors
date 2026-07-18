@@ -32,7 +32,7 @@ export function Footer() {
       <div className="relative mx-auto max-w-[1360px] px-5 py-16 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div>
-            <Logo variant="light" />
+            <Logo variant="light" height={56} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-brand-100/70">
               Premium car rental across Somalia. Command every journey with a
               spotless, fully-insured fleet — from the legendary Land Cruiser to

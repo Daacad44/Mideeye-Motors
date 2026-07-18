@@ -29,7 +29,7 @@ export function Logo({
     <span
       className={cn(
         'inline-flex items-center',
-        variant === 'light' && 'rounded-xl bg-white px-2.5 py-1.5 shadow-sm',
+        variant === 'light' && 'rounded-xl bg-white px-2 py-1 shadow-sm',
         className,
       )}
       style={{ minHeight: height }}
