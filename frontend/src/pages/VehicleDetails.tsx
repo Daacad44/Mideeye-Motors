@@ -10,8 +10,10 @@ import { MonthCalendar } from '@/components/MonthCalendar';
 import { Lightbox } from '@/components/Lightbox';
 import { VehicleCard } from '@/components/VehicleCard';
 import { ButtonLink } from '@/components/ui/Button';
-import { formatCurrency } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/LocaleContext';
+import { useSeo } from '@/lib/seo';
+import { ik } from '@/lib/imagekitImages';
 import { vehiclesApi, type Review, type BusyRange } from '@/lib/vehiclesApi';
 
 export interface GalleryItem {
@@ -28,6 +30,7 @@ export default function VehicleDetails() {
   const [lightbox, setLightbox] = useState<number | null>(null);
 
   const { user } = useAuth();
+  const { money } = useCurrency();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [canReview, setCanReview] = useState(false);
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
@@ -82,6 +85,13 @@ export default function VehicleDetails() {
       setPosting(false);
     }
   };
+
+  useSeo({
+    title: vehicle ? `${vehicle.title} — ${vehicle.brand}` : 'Vehicle',
+    description: vehicle?.description,
+    image: vehicle?.coverImage ? ik(vehicle.coverImage.filePath, 'card') : undefined,
+    type: 'product',
+  });
 
   if (loading) {
     return (
@@ -240,7 +250,7 @@ export default function VehicleDetails() {
                     <span className="text-[13px] font-semibold uppercase tracking-wide text-ink-400">From</span>
                     <div>
                       <span className="font-display text-4xl font-extrabold text-navy-700">
-                        {formatCurrency(vehicle.pricePerDay)}
+                        {money(vehicle.pricePerDay)}
                       </span>
                       <span className="text-[15px] font-medium text-ink-400"> / day</span>
                     </div>
@@ -361,10 +371,11 @@ export default function VehicleDetails() {
 }
 
 function PriceTile({ label, value }: { label: string; value: number }) {
+  const { money } = useCurrency();
   return (
     <div className="rounded-2xl border border-line bg-mist-100 p-3.5 text-center">
       <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-400">{label}</div>
-      <div className="font-display text-lg font-extrabold text-navy-700">{formatCurrency(value)}</div>
+      <div className="font-display text-lg font-extrabold text-navy-700">{money(value)}</div>
     </div>
   );
 }

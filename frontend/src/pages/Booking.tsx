@@ -4,7 +4,8 @@ import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight, 
 import { useVehicle } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
 import { Logo } from '@/components/ui/Logo';
-import { formatCurrency } from '@/lib/cn';
+import { useCurrency, useI18n } from '@/context/LocaleContext';
+import { useSeo } from '@/lib/seo';
 import { bookingsApi } from '@/lib/bookingsApi';
 import { paymentsApi, type Payment } from '@/lib/paymentsApi';
 import { couponsApi, type CouponValidation } from '@/lib/couponsApi';
@@ -28,6 +29,9 @@ export default function Booking() {
   const [params] = useSearchParams();
   const slug = params.get('vehicle') ?? 'toyota-land-cruiser-2024';
   const { vehicle } = useVehicle(slug);
+  const { money, currency } = useCurrency();
+  const { t } = useI18n();
+  useSeo({ title: t('booking.title') });
 
   const [form, setForm] = useState({
     pickupLocation: 'Mogadishu HQ',
@@ -209,10 +213,10 @@ export default function Booking() {
       <div className="mx-auto max-w-[1360px] px-5 py-12 lg:px-8">
         <div className="text-center">
           <h1 className="font-display text-3xl font-extrabold text-navy-700 lg:text-[40px]">
-            Complete Your Booking
+            {t('booking.title')}
           </h1>
           <p className="mt-3 text-[16px] text-ink-500">
-            A few quick details and you’re on the road.
+            {t('booking.subtitle')}
           </p>
         </div>
 
@@ -262,7 +266,7 @@ export default function Booking() {
                   <div className="mx-auto mt-6 max-w-md rounded-2xl border border-line p-5 text-left">
                     <h4 className="flex items-center justify-between font-display text-[15px] font-bold text-navy-700">
                       <span>Complete payment</span>
-                      <span className="text-brand-600">{formatCurrency(total)}</span>
+                      <span className="text-brand-600">{money(total)}</span>
                     </h4>
 
                     {payError && (
@@ -310,25 +314,25 @@ export default function Booking() {
               </div>
             ) : (
               <>
-                <Panel title="Rental details" icon={MapPin}>
+                <Panel title={t('booking.rentalDetails')} icon={MapPin}>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className={label}>Pickup location</label>
+                      <label className={label}>{t('booking.pickupLocation')}</label>
                       <input className={field} value={form.pickupLocation}
                         onChange={(e) => setForm({ ...form, pickupLocation: e.target.value })} />
                     </div>
                     <div>
-                      <label className={label}>Drop-off location</label>
+                      <label className={label}>{t('booking.dropoffLocation')}</label>
                       <input className={field} value={form.dropoffLocation}
                         onChange={(e) => setForm({ ...form, dropoffLocation: e.target.value })} />
                     </div>
                     <div>
-                      <label className={label}>Pickup date</label>
+                      <label className={label}>{t('booking.pickupDate')}</label>
                       <input type="date" className={field} value={form.pickupDate}
                         onChange={(e) => setForm({ ...form, pickupDate: e.target.value })} />
                     </div>
                     <div>
-                      <label className={label}>Return date</label>
+                      <label className={label}>{t('booking.returnDate')}</label>
                       <input type="date" className={field} value={form.returnDate}
                         onChange={(e) => setForm({ ...form, returnDate: e.target.value })} />
                     </div>
@@ -340,7 +344,7 @@ export default function Booking() {
                   )}
                 </Panel>
 
-                <Panel title="Add extras" icon={Sparkles}>
+                <Panel title={t('booking.extras')} icon={Sparkles}>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {EXTRAS.map((e) => (
                       <button key={e.id} onClick={() => toggleExtra(e.id)}
@@ -349,13 +353,13 @@ export default function Booking() {
                           (extras.includes(e.id) ? 'border-brand-500 bg-brand-100/60' : 'border-line bg-white hover:border-brand-300')
                         }>
                         <span className="text-[14.5px] font-semibold text-navy-700">{e.label}</span>
-                        <span className="text-[13px] font-bold text-brand-600">+{formatCurrency(e.price)}/day</span>
+                        <span className="text-[13px] font-bold text-brand-600">+{money(e.price)}/day</span>
                       </button>
                     ))}
                   </div>
                 </Panel>
 
-                <Panel title="Insurance" icon={ShieldCheck}>
+                <Panel title={t('booking.insurance')} icon={ShieldCheck}>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {INSURANCE.map((opt) => (
                       <button key={opt.id} onClick={() => setInsurance(opt.id)}
@@ -366,27 +370,27 @@ export default function Booking() {
                         <div className="text-[14.5px] font-bold text-navy-700">{opt.label}</div>
                         <div className="text-[12.5px] text-ink-400">{opt.desc}</div>
                         <div className="mt-2 text-[13px] font-bold text-brand-600">
-                          {opt.price ? `+${formatCurrency(opt.price)}/day` : 'Free'}
+                          {opt.price ? `+${money(opt.price)}/day` : 'Free'}
                         </div>
                       </button>
                     ))}
                   </div>
                 </Panel>
 
-                <Panel title="Your details" icon={CalendarDays}>
+                <Panel title={t('booking.yourDetails')} icon={CalendarDays}>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                      <label className={label}>Full name</label>
+                      <label className={label}>{t('booking.fullName')}</label>
                       <input className={field} value={form.name} placeholder="Jane Doe"
                         onChange={(e) => setForm({ ...form, name: e.target.value })} />
                     </div>
                     <div>
-                      <label className={label}>Email</label>
+                      <label className={label}>{t('booking.email')}</label>
                       <input type="email" className={field} value={form.email} placeholder="jane@email.com"
                         onChange={(e) => setForm({ ...form, email: e.target.value })} />
                     </div>
                     <div>
-                      <label className={label}>Phone</label>
+                      <label className={label}>{t('booking.phone')}</label>
                       <input className={field} value={form.phone} placeholder="+252 …"
                         onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                     </div>
@@ -399,7 +403,7 @@ export default function Booking() {
           {/* Summary */}
           <aside>
             <div className="sticky top-24 rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-lift)]">
-              <h3 className="font-display text-lg font-bold text-navy-700">Booking summary</h3>
+              <h3 className="font-display text-lg font-bold text-navy-700">{t('booking.summary')}</h3>
 
               <div className="mt-4 overflow-hidden rounded-2xl bg-gradient-to-b from-mist-200 to-white">
                 <VehicleImage
@@ -414,14 +418,14 @@ export default function Booking() {
               <p className="text-[13px] text-ink-400">{vehicle?.category} · {vehicle?.transmission}</p>
 
               <dl className="mt-5 space-y-2.5 border-t border-line pt-4 text-[14px]">
-                <Row label="Pickup" value={form.pickupLocation} />
-                <Row label="Return" value={form.dropoffLocation} />
-                <Row label="Duration" value={`${days} day${days > 1 ? 's' : ''}`} />
-                <Row label={`Rate × ${days}`} value={formatCurrency(carTotal)} />
-                {extrasTotal > 0 && <Row label="Extras" value={formatCurrency(extrasTotal)} />}
-                {insuranceTotal > 0 && <Row label="Insurance" value={formatCurrency(insuranceTotal)} />}
-                {discount > 0 && <Row label={`Discount${coupon?.code ? ` (${coupon.code})` : ''}`} value={`- ${formatCurrency(discount)}`} />}
-                <Row label="Tax (5%)" value={formatCurrency(tax)} />
+                <Row label={t('booking.pickup')} value={form.pickupLocation} />
+                <Row label={t('booking.ret')} value={form.dropoffLocation} />
+                <Row label={t('booking.duration')} value={`${days} ${days > 1 ? t('booking.days') : t('booking.day')}`} />
+                <Row label={`${t('common.from')} × ${days}`} value={money(carTotal)} />
+                {extrasTotal > 0 && <Row label={t('booking.extras')} value={money(extrasTotal)} />}
+                {insuranceTotal > 0 && <Row label={t('booking.insurance')} value={money(insuranceTotal)} />}
+                {discount > 0 && <Row label={`${t('booking.discount')}${coupon?.code ? ` (${coupon.code})` : ''}`} value={`- ${money(discount)}`} />}
+                <Row label={t('booking.tax')} value={money(tax)} />
               </dl>
 
               {!confirmed && (
@@ -433,11 +437,11 @@ export default function Booking() {
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <input value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Promo code"
+                      <input value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder={t('booking.promoPlaceholder')}
                         className="min-w-0 flex-1 rounded-xl border border-line px-3 py-2.5 text-[13.5px] font-mono uppercase text-navy-700 focus:border-brand-400 focus:outline-none" />
                       <button onClick={applyCoupon} disabled={applyingCoupon || !couponInput.trim()}
                         className="rounded-xl bg-navy-700 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-800 disabled:opacity-60">
-                        {applyingCoupon ? '…' : 'Apply'}
+                        {applyingCoupon ? '…' : t('common.apply')}
                       </button>
                     </div>
                   )}
@@ -446,11 +450,14 @@ export default function Booking() {
               )}
 
               <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
-                <span className="font-display font-bold text-navy-700">Total</span>
+                <span className="font-display font-bold text-navy-700">{t('booking.total')}</span>
                 <span className="font-display text-2xl font-extrabold text-navy-700">
-                  {formatCurrency(total)}
+                  {money(total)}
                 </span>
               </div>
+              {currency === 'SOS' && (
+                <p className="mt-1.5 text-right text-[11.5px] font-medium text-ink-400">{t('booking.sosNote')}</p>
+              )}
 
               {!confirmed && (
                 <>
@@ -464,17 +471,17 @@ export default function Booking() {
                     disabled={!canSubmit}
                     className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-4 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   >
-                    {submitting ? 'Processing…' : <>Confirm & Pay <ArrowRight className="size-4" /></>}
+                    {submitting ? 'Processing…' : <>{t('booking.confirmPay')} <ArrowRight className="size-4" /></>}
                   </button>
                   {!canSubmit && !submitting && (
                     <p className="mt-2 text-center text-[12px] text-ink-400">
-                      Add pickup &amp; return dates and your name, email &amp; phone to continue.
+                      {t('booking.fillPrompt')}
                     </p>
                   )}
                 </>
               )}
               <p className="mt-3 text-center text-[12px] text-ink-400">
-                No charge until pickup · Free cancellation 48h before.
+                {t('booking.noCharge')}
               </p>
             </div>
           </aside>

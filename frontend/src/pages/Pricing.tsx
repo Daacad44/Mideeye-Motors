@@ -2,6 +2,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/ui/Reveal';
 import { ButtonLink } from '@/components/ui/Button';
 import { Check } from 'lucide-react';
+import { useCurrency, useI18n } from '@/context/LocaleContext';
+import { useSeo } from '@/lib/seo';
 
 const plans = [
   {
@@ -31,9 +33,12 @@ const plans = [
 ];
 
 export default function Pricing() {
+  const { money } = useCurrency();
+  const { t } = useI18n();
+  useSeo({ title: 'Pricing — Mideeye Motors', description: 'Simple, transparent car rental pricing. No hidden fees.' });
   return (
     <div className="bg-mist-100">
-      <PageHeader crumb="Pricing" title="Simple, transparent pricing" subtitle="No hidden fees. Choose the plan that fits your journey — starting from just $55." />
+      <PageHeader crumb={t('nav.pricing')} title="Simple, transparent pricing" subtitle="No hidden fees. Choose the plan that fits your journey." />
       <div className="mx-auto max-w-[1360px] px-5 py-20 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-3">
           {plans.map((p, i) => (
@@ -57,7 +62,7 @@ export default function Pricing() {
                 <p className={'mt-1 text-[14px] ' + (p.highlight ? 'text-brand-100/70' : 'text-ink-400')}>{p.desc}</p>
                 <div className="mt-5">
                   <span className={'font-display text-5xl font-extrabold ' + (p.highlight ? 'text-white' : 'text-navy-700')}>
-                    ${p.price}
+                    {money(p.price)}
                   </span>
                   <span className={p.highlight ? 'text-brand-100/70' : 'text-ink-400'}> {p.unit}</span>
                 </div>

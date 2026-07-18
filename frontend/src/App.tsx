@@ -14,6 +14,9 @@ const About = lazy(() => import('@/pages/About'));
 const Services = lazy(() => import('@/pages/Services'));
 const Pricing = lazy(() => import('@/pages/Pricing'));
 const Contact = lazy(() => import('@/pages/Contact'));
+const Faq = lazy(() => import('@/pages/Faq'));
+const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
 const Login = lazy(() => import('@/pages/Login'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -54,6 +57,9 @@ export default function App() {
             <Route path="/services" element={<Page><Services /></Page>} />
             <Route path="/pricing" element={<Page><Pricing /></Page>} />
             <Route path="/contact" element={<Page><Contact /></Page>} />
+            <Route path="/faq" element={<Page><Faq /></Page>} />
+            <Route path="/terms" element={<Page><Terms /></Page>} />
+            <Route path="/privacy" element={<Page><Privacy /></Page>} />
             <Route path="/login" element={<Page><Login /></Page>} />
             <Route path="/reset-password" element={<Page><ResetPassword /></Page>} />
             <Route path="/dashboard" element={<Page><Dashboard /></Page>} />
