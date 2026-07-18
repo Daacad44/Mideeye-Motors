@@ -72,4 +72,21 @@ export const mediaApi = {
       method: 'DELETE',
       body: JSON.stringify({ ids, force }),
     }),
+
+  /**
+   * Assign an uploaded MediaImage as the site's official logo / favicon / hero.
+   * Passing `null` clears that slot. Wraps `PATCH /api/branding`, which resolves
+   * the image into a ready-to-use delivery URL so the header/footer pick it up
+   * site-wide immediately (via `/api/branding`).
+   */
+  setBranding: (
+    patch: Partial<{
+      logoImageId: string | null;
+      faviconImageId: string | null;
+      heroImageId: string | null;
+    }>,
+  ) => http<{ logo: unknown; favicon: unknown; heroImage: unknown }>(`/branding`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  }),
 };

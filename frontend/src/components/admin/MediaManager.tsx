@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   UploadCloud, Search, Trash2, RefreshCw, Check, Link2, Hash,
-  FolderOpen, X, Loader2, Image as ImageIcon, Pencil, ArrowUpDown, ShieldAlert,
+  FolderOpen, X, Loader2, Image as ImageIcon, Pencil, ArrowUpDown, ShieldAlert, Sparkles,
 } from 'lucide-react';
 import { mediaApi, type MediaSort } from '@/lib/mediaApi';
 import { ik } from '@/lib/imagekitImages';
 import { ApiError } from '@/lib/http';
+import { refreshBranding } from '@/lib/branding';
 import type { MediaImage } from '@/types/media';
 
 function prettyBytes(n: number | null) {
@@ -37,6 +38,8 @@ export function MediaManager() {
   const [copied, setCopied] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id?: string; ids?: string[]; usedBy: string[] } | null>(null);
+  const [logoBusy, setLogoBusy] = useState<string | null>(null);
+  const [logoSet, setLogoSet] = useState<string | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
@@ -99,6 +102,27 @@ export function MediaManager() {
       setCopied(key);
       setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
     } catch { /* ignore */ }
+  };
+
+  /**
+   * Mark this image as the official site logo. Persists via PATCH /api/branding,
+   * then refreshes the site-wide branding cache so the header/footer swap to it
+   * without a page reload.
+   */
+  const setAsLogo = async (id: string) => {
+    setLogoBusy(id);
+    setError(null);
+    try {
+      await mediaApi.setBranding({ logoImageId: id });
+      await refreshBranding();
+      setLogoSet(id);
+      setTimeout(() => setLogoSet((c) => (c === id ? null : c)), 2000);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLogoBusy(null);
+    }
   };
 
   const remove = async (id: string, force = false) => {
@@ -305,6 +329,9 @@ export function MediaManager() {
                     <span className="absolute right-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-white">In use</span>
                   )}
                   <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Action title="Set as site logo" onClick={() => setAsLogo(a.id)} active={logoSet === a.id}>
+                      {logoBusy === a.id ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                    </Action>
                     <Action title="Copy URL" onClick={() => copy(ik(a.filePath, 'card'), a.id + 'u')} active={copied === a.id + 'u'}><Link2 className="size-4" /></Action>
                     <Action title="Copy ID (use on Fleet tab)" onClick={() => copy(a.id, a.id + 'p')} active={copied === a.id + 'p'}><Hash className="size-4" /></Action>
                     <Action title="Replace" onClick={() => { replaceTarget.current = a.id; replaceInput.current?.click(); }}><RefreshCw className="size-4" /></Action>
