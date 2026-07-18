@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { cacheInvalidate } from '../lib/redis.js';
 import { audit } from '../lib/audit.js';
 import { authenticate, optionalAuthenticate, requireStaff } from '../middleware/auth.js';
-import { hasBookingConflict } from '../lib/availability.js';
+import { isRangeBlocked } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
 import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
 
@@ -93,8 +93,8 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
   if (!vehicle.availability) {
     return res.status(409).json({ error: 'This vehicle is not currently available for booking.' });
   }
-  if (await hasBookingConflict(vehicle.id, pickup, ret)) {
-    return res.status(409).json({ error: 'This vehicle is already booked for the selected dates.' });
+  if (await isRangeBlocked(vehicle.id, pickup, ret)) {
+    return res.status(409).json({ error: 'This vehicle isn’t available for the selected dates (already booked or under maintenance).' });
   }
 
   const days = Math.max(1, Math.round((ret.getTime() - pickup.getTime()) / 86400000) || 1);
