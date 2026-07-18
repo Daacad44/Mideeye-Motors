@@ -64,7 +64,7 @@ export default function Admin() {
       {/* ── Sidebar (desktop) ── */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/5 bg-navy-950 lg:flex">
         <div className="flex h-20 items-center gap-2 border-b border-white/5 px-5">
-          <Logo variant="light" height={34} />
+          <Logo variant="plain" height={44} />
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
@@ -104,7 +104,7 @@ export default function Admin() {
         <header className="sticky top-0 z-20 border-b border-line bg-white/80 backdrop-blur">
           <div className="flex items-center gap-3 px-5 py-4 lg:px-8">
             <div className="lg:hidden">
-              <Logo height={30} />
+              <Logo height={40} />
             </div>
             <div className="hidden items-center gap-2 lg:flex">
               <activeTab.icon className="size-5 text-brand-600" />

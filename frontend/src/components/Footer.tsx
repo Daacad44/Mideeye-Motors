@@ -36,8 +36,8 @@ export function Footer() {
       <div className="relative mx-auto max-w-[1360px] px-5 py-16 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div>
-            <Logo variant="light" />
-            <p className="mt-5 max-w-xs text-sm leading-relaxed text-brand-100/70">
+            <Logo variant="plain" height={60} />
+            <p className="mt-6 max-w-xs text-sm leading-relaxed text-brand-100/70">
               {t('footer.tagline')}
             </p>
             <div className="mt-6 flex gap-3">

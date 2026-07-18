@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { env } from './env.js';
+import { prisma } from './prisma.js';
 
 /**
  * Notifications. Two channels behind a small provider interface so a real SMS
@@ -66,11 +67,30 @@ export interface BookingNotice {
   returnDate: Date | string;
 }
 
-function shell(heading: string, bodyRows: string): string {
+/**
+ * The official logo's public URL for the email header, resolved from the
+ * Branding singleton. Best-effort — falls back to a text wordmark header if it
+ * can't be read. Does not touch the frontend branding fetch / ImageKit logic.
+ */
+async function brandingLogoUrl(): Promise<string | null> {
+  try {
+    const b = await prisma.branding.findUnique({ where: { id: 'default' }, select: { logo: { select: { url: true } } } });
+    return b?.logo?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function shell(heading: string, bodyRows: string, logoUrl: string | null): string {
+  // Logo on a white band (the logo's own colours read on white); otherwise a
+  // navy wordmark bar. `height` fixes the size; width auto keeps its ratio.
+  const header = logoUrl
+    ? `<div style="background:#fff;padding:18px 24px;border-bottom:1px solid #e6edf5;text-align:center"><img src="${logoUrl}" alt="Mideeye Motors &amp; Rental Car Co." height="40" style="height:40px;width:auto;display:inline-block" /></div>`
+    : `<div style="background:#143a68;padding:20px 24px;color:#fff;font-weight:800;font-size:18px">Mideeye Motors</div>`;
   return `
   <div style="font-family:Inter,Arial,sans-serif;background:#f7f9fc;padding:24px">
     <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e6edf5;border-radius:16px;overflow:hidden">
-      <div style="background:#143a68;padding:20px 24px;color:#fff;font-weight:800;font-size:18px">Mideeye Motors</div>
+      ${header}
       <div style="padding:24px">
         <h1 style="margin:0 0 8px;font-size:20px;color:#143a68">${heading}</h1>
         <table style="width:100%;border-collapse:collapse;font-size:14px;color:#1e293b">${bodyRows}</table>
@@ -100,6 +120,7 @@ export async function notifyBookingReceived(b: BookingNotice): Promise<void> {
       'Booking received',
       `<tr><td colspan="2" style="padding-bottom:10px;color:#1e293b">Hi ${b.customerName ?? 'there'}, we’ve received your booking and it’s awaiting confirmation.</td></tr>` +
         bookingRows(b),
+      await brandingLogoUrl(),
     );
     if (b.customerEmail) await sendEmail({ to: b.customerEmail, subject: `Booking received — ${b.reference}`, html });
     if (b.customerPhone) await sendSms({ to: b.customerPhone, message: `Mideeye Motors: booking ${b.reference} received (${money(b.total)}). We’ll confirm shortly.` });
@@ -115,6 +136,7 @@ export async function notifyBookingConfirmed(b: BookingNotice): Promise<void> {
       'Booking confirmed ✅',
       `<tr><td colspan="2" style="padding-bottom:10px;color:#1e293b">Hi ${b.customerName ?? 'there'}, your booking is confirmed. See you at pickup!</td></tr>` +
         bookingRows(b),
+      await brandingLogoUrl(),
     );
     if (b.customerEmail) await sendEmail({ to: b.customerEmail, subject: `Booking confirmed — ${b.reference}`, html });
     if (b.customerPhone) await sendSms({ to: b.customerPhone, message: `Mideeye Motors: booking ${b.reference} is CONFIRMED. See you at pickup!` });
@@ -131,6 +153,7 @@ export async function notifyPasswordReset(input: { to: string; name?: string | n
       `<tr><td colspan="2" style="color:#1e293b;padding-bottom:12px">Hi ${input.name ?? 'there'}, we received a request to reset your password. This link expires in 1 hour and can be used once.</td></tr>` +
         `<tr><td colspan="2"><a href="${input.link}" style="display:inline-block;background:#0b67c2;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px">Reset password</a></td></tr>` +
         `<tr><td colspan="2" style="color:#7a8aa0;padding-top:12px;font-size:12px">If you didn’t request this, you can safely ignore this email.</td></tr>`,
+      await brandingLogoUrl(),
     );
     await sendEmail({ to: input.to, subject: 'Reset your Mideeye Motors password', html });
   } catch (err) {
