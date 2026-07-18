@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
-  Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus,
+  Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus, CalendarCheck,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
@@ -12,11 +12,12 @@ import { useAuth } from '@/context/AuthContext';
 import { MediaManager } from '@/components/admin/MediaManager';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
+import { BookingsPanel } from '@/components/admin/BookingsPanel';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import type { Vehicle, VehicleGalleryImage } from '@/types/vehicle';
 
-type Tab = 'fleet' | 'media' | 'users' | 'audit';
+type Tab = 'fleet' | 'media' | 'bookings' | 'users' | 'audit';
 
 export default function Admin() {
   const { user, loading, isStaff, hasRole, logout } = useAuth();
@@ -43,6 +44,7 @@ export default function Admin() {
   const allTabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
     { id: 'media', label: 'Media Library', icon: Images, show: true },
     { id: 'fleet', label: 'Fleet', icon: Car, show: true },
+    { id: 'bookings', label: 'Bookings', icon: CalendarCheck, show: true },
     { id: 'users', label: 'Team & Roles', icon: Users, show: isAdmin },
     { id: 'audit', label: 'Audit Log', icon: ScrollText, show: isAdmin },
   ];
@@ -134,6 +136,7 @@ export default function Admin() {
         <main className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
           {tab === 'media' && <MediaManager />}
           {tab === 'fleet' && <FleetPanel />}
+          {tab === 'bookings' && <BookingsPanel />}
           {tab === 'users' && <UsersPanel />}
           {tab === 'audit' && <AuditPanel />}
         </main>

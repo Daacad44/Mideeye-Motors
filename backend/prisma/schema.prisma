@@ -252,6 +252,11 @@ model Booking {
   pickupDate     DateTime
   returnDate     DateTime
 
+  // Contact details captured at checkout (guest bookings have no userId).
+  customerName   String?
+  customerEmail  String?
+  customerPhone  String?
+
   extras         String[]
   insurance      String        @default("basic")
 
