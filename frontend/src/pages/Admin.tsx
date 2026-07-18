@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
   Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus, CalendarCheck,
-  Pencil, CalendarDays, Wrench, Loader2,
+  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
@@ -16,15 +16,17 @@ import { MediaManager } from '@/components/admin/MediaManager';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { BookingsPanel } from '@/components/admin/BookingsPanel';
+import { AnalyticsPanel } from '@/components/admin/AnalyticsPanel';
+import { CouponsPanel } from '@/components/admin/CouponsPanel';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import type { Vehicle, VehicleGalleryImage, VehicleCategory, Transmission, FuelType } from '@/types/vehicle';
 
-type Tab = 'fleet' | 'media' | 'bookings' | 'users' | 'audit';
+type Tab = 'analytics' | 'fleet' | 'media' | 'bookings' | 'coupons' | 'users' | 'audit';
 
 export default function Admin() {
   const { user, loading, isStaff, hasRole, logout } = useAuth();
-  const [tab, setTab] = useState<Tab>('media');
+  const [tab, setTab] = useState<Tab>('analytics');
 
   if (loading) {
     return <div className="grid min-h-screen place-items-center bg-mist-100"><span className="size-8 animate-spin rounded-full border-2 border-line border-t-brand-600" /></div>;
@@ -45,9 +47,11 @@ export default function Admin() {
 
   const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
   const allTabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, show: true },
     { id: 'media', label: 'Media Library', icon: Images, show: true },
     { id: 'fleet', label: 'Fleet', icon: Car, show: true },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck, show: true },
+    { id: 'coupons', label: 'Coupons', icon: Ticket, show: isAdmin },
     { id: 'users', label: 'Team & Roles', icon: Users, show: isAdmin },
     { id: 'audit', label: 'Audit Log', icon: ScrollText, show: isAdmin },
   ];
@@ -137,9 +141,11 @@ export default function Admin() {
         </header>
 
         <main className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
+          {tab === 'analytics' && <AnalyticsPanel />}
           {tab === 'media' && <MediaManager />}
           {tab === 'fleet' && <FleetPanel />}
           {tab === 'bookings' && <BookingsPanel />}
+          {tab === 'coupons' && <CouponsPanel />}
           {tab === 'users' && <UsersPanel />}
           {tab === 'audit' && <AuditPanel />}
         </main>

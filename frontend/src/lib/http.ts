@@ -129,3 +129,37 @@ export function uploadWithProgress<T = unknown>(
     xhr.send(form);
   });
 }
+
+/**
+ * Fetch a file from an authenticated endpoint (Bearer token + refresh-on-401)
+ * and trigger a browser download. Used for CSV/report exports, which a plain
+ * `<a download>` can't authenticate.
+ */
+export async function downloadAuthed(path: string, fallbackName: string): Promise<void> {
+  const run = async (retry: boolean): Promise<Response> => {
+    const headers = new Headers();
+    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+    const res = await rawFetch(path, { headers, credentials: 'include' });
+    if (res.status === 401 && retry && (await refresh())) return run(false);
+    return res;
+  };
+  const res = await run(true);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(messageFromBody(body, res.status), res.status, body);
+  }
+
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^"]+)"?/.exec(cd);
+  const name = match?.[1] ?? fallbackName;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
