@@ -15,6 +15,7 @@ const Services = lazy(() => import('@/pages/Services'));
 const Pricing = lazy(() => import('@/pages/Pricing'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const Login = lazy(() => import('@/pages/Login'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
@@ -34,7 +35,7 @@ function Page({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const location = useLocation();
-  const bare = location.pathname === '/login' || location.pathname.startsWith('/admin');
+  const bare = location.pathname === '/login' || location.pathname === '/reset-password' || location.pathname.startsWith('/admin');
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/pricing" element={<Page><Pricing /></Page>} />
             <Route path="/contact" element={<Page><Contact /></Page>} />
             <Route path="/login" element={<Page><Login /></Page>} />
+            <Route path="/reset-password" element={<Page><ResetPassword /></Page>} />
             <Route path="/dashboard" element={<Page><Dashboard /></Page>} />
             <Route path="/admin" element={<Page><Admin /></Page>} />
             <Route path="*" element={<Page><NotFound /></Page>} />

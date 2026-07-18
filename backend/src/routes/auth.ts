@@ -1,10 +1,15 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { env } from '../lib/env.js';
 import { authenticate, signAccessToken } from '../middleware/auth.js';
 import { issueRefreshToken, rotateRefreshToken, revokeRefreshToken, REFRESH_COOKIE } from '../lib/tokens.js';
 import { audit } from '../lib/audit.js';
+import { notifyPasswordReset } from '../lib/notify.js';
+
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour, single-use
 
 export const authRouter = Router();
 
@@ -78,4 +83,47 @@ authRouter.get('/me', authenticate, async (req, res) => {
     select: { id: true, name: true, email: true, role: true, status: true },
   });
   res.json({ user });
+});
+
+// POST /api/auth/forgot-password — always 200 (never reveal whether the email
+// exists). If it does, issue a single-use, expiring token and email the link.
+authRouter.post('/forgot-password', async (req, res) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    await prisma.passwordResetToken.create({
+      data: { userId: user.id, token, expiresAt: new Date(Date.now() + RESET_TTL_MS) },
+    });
+    await notifyPasswordReset({
+      to: user.email,
+      name: user.name,
+      link: `${env.frontendUrl}/reset-password?token=${token}`,
+    });
+    await audit(req, 'PASSWORD_RESET_REQUEST', 'User', user.id);
+  }
+  res.json({ ok: true });
+});
+
+// POST /api/auth/reset-password — consume the token, set the new password, and
+// revoke existing sessions.
+authRouter.post('/reset-password', async (req, res) => {
+  const parsed = z.object({ token: z.string().min(1), password: z.string().min(6) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const record = await prisma.passwordResetToken.findUnique({ where: { token: parsed.data.token } });
+  if (!record || record.used || record.expiresAt < new Date()) {
+    return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+  }
+
+  const password = await bcrypt.hash(parsed.data.password, 12);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { password } }),
+    prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } }),
+    prisma.refreshToken.updateMany({ where: { userId: record.userId }, data: { revoked: true } }),
+  ]);
+  await audit(req, 'PASSWORD_RESET', 'User', record.userId);
+  res.json({ ok: true });
 });
