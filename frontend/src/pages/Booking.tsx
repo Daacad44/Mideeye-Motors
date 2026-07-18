@@ -5,6 +5,7 @@ import { useVehicle } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
 import { Logo } from '@/components/ui/Logo';
 import { formatCurrency } from '@/lib/cn';
+import { bookingsApi } from '@/lib/bookingsApi';
 
 const EXTRAS = [
   { id: 'driver', label: 'Professional driver', price: 40 },
@@ -38,6 +39,9 @@ export default function Booking() {
   const [extras, setExtras] = useState<string[]>([]);
   const [insurance, setInsurance] = useState('basic');
   const [confirmed, setConfirmed] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const days = useMemo(() => {
     if (!form.pickupDate || !form.returnDate) return 1;
@@ -49,15 +53,61 @@ export default function Booking() {
 
   const rate = vehicle?.pricePerDay ?? 0;
   const carTotal = rate * days;
-  const extrasTotal =
-    EXTRAS.filter((e) => extras.includes(e.id)).reduce((s, e) => s + e.price, 0) * days;
-  const insuranceTotal = (INSURANCE.find((i) => i.id === insurance)?.price ?? 0) * days;
+  const extrasPerDay = EXTRAS.filter((e) => extras.includes(e.id)).reduce((s, e) => s + e.price, 0);
+  const insurancePerDay = INSURANCE.find((i) => i.id === insurance)?.price ?? 0;
+  const extrasTotal = extrasPerDay * days;
+  const insuranceTotal = insurancePerDay * days;
   const subtotal = carTotal + extrasTotal + insuranceTotal;
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
   const toggleExtra = (id: string) =>
     setExtras((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  // Client validation gates the submit button; the server is the source of
+  // truth for both availability and the final price.
+  const datesValid =
+    !!form.pickupDate && !!form.returnDate && new Date(form.returnDate) > new Date(form.pickupDate);
+  const detailsValid = !!form.name.trim() && !!form.email.trim() && !!form.phone.trim();
+  const canSubmit = datesValid && detailsValid && !!vehicle && !submitting;
+
+  const handleSubmit = async () => {
+    if (!vehicle || !canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      // Confirm the dates are still free before taking the booking.
+      const { data: avail } = await bookingsApi.checkAvailability(
+        vehicle.slug,
+        form.pickupDate,
+        form.returnDate,
+      );
+      if (!avail.available) {
+        setError("This vehicle isn't available for those dates — try different dates.");
+        return;
+      }
+      const { data: booking } = await bookingsApi.create({
+        vehicleId: vehicle.id,
+        pickupLocation: form.pickupLocation,
+        dropoffLocation: form.dropoffLocation,
+        pickupDate: form.pickupDate,
+        returnDate: form.returnDate,
+        extras,
+        insurance,
+        extrasPerDay,
+        insurancePerDay,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+      });
+      setReference(booking.reference);
+      setConfirmed(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const field = 'w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
   const label = 'mb-1.5 block text-[13px] font-bold text-navy-700';
@@ -88,6 +138,13 @@ export default function Booking() {
                   We’ve reserved your {vehicle?.title}. A confirmation has been sent to{' '}
                   <span className="font-semibold text-navy-700">{form.email || 'your email'}</span>.
                 </p>
+                {reference && (
+                  <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-line bg-mist-100 px-5 py-4">
+                    <div className="text-[12px] font-bold uppercase tracking-wide text-ink-400">Booking reference</div>
+                    <div className="mt-1 font-display text-xl font-extrabold tracking-wide text-navy-700">{reference}</div>
+                    <p className="mt-1 text-[12.5px] text-ink-400">Keep this reference to track your booking status anytime.</p>
+                  </div>
+                )}
                 <Link
                   to="/fleet"
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-bold text-white"
@@ -213,12 +270,25 @@ export default function Booking() {
               </div>
 
               {!confirmed && (
-                <button
-                  onClick={() => setConfirmed(true)}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-4 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5"
-                >
-                  Confirm & Pay <ArrowRight className="size-4" />
-                </button>
+                <>
+                  {error && (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!canSubmit}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-4 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {submitting ? 'Processing…' : <>Confirm & Pay <ArrowRight className="size-4" /></>}
+                  </button>
+                  {!canSubmit && !submitting && (
+                    <p className="mt-2 text-center text-[12px] text-ink-400">
+                      Add pickup &amp; return dates and your name, email &amp; phone to continue.
+                    </p>
+                  )}
+                </>
               )}
               <p className="mt-3 text-center text-[12px] text-ink-400">
                 No charge until pickup · Free cancellation 48h before.

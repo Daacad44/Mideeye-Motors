@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { cacheGet, cacheSet, cacheInvalidate } from '../lib/redis.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { hasBookingConflict } from '../lib/availability.js';
 
 export const vehiclesRouter = Router();
 
-const vehicleInclude = {
+export const vehicleInclude = {
   heroImage: true,
   coverImage: true,
   thumbnail: true,
@@ -19,7 +20,7 @@ const vehicleInclude = {
  * preset URL it needs (hero/card/gallery/thumb) via `tr=` params from that
  * single path; the API never pre-resolves one specific preset.
  */
-function serialize(v: any) {
+export function serialize(v: any) {
   const { heroImageId, coverImageId, thumbnailId, heroImage, coverImage, thumbnail, gallery, ...rest } = v;
   return {
     ...rest,
@@ -58,6 +59,23 @@ vehiclesRouter.get('/', async (req, res) => {
   const data = vehicles.map(serialize);
   await cacheSet(cacheKey, data, 60);
   res.json({ data });
+});
+
+// GET /api/vehicles/:slug/availability?from=&to= — public date-range check so
+// the checkout flow can validate before creating a booking. Runs the same
+// overlap check used when a booking is created.
+vehiclesRouter.get('/:slug/availability', async (req, res) => {
+  const from = new Date(String(req.query.from));
+  const to = new Date(String(req.query.to));
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
+    return res.status(400).json({ error: 'Provide a valid from/to date range.' });
+  }
+
+  const vehicle = await prisma.vehicle.findUnique({ where: { slug: req.params.slug }, select: { id: true, availability: true } });
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+
+  const available = vehicle.availability && !(await hasBookingConflict(vehicle.id, from, to));
+  res.json({ data: { available } });
 });
 
 // GET /api/vehicles/:slug
