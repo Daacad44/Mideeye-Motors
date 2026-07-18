@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
+import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight, Smartphone, Zap, Clock } from 'lucide-react';
 import { useVehicle } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
 import { Logo } from '@/components/ui/Logo';
 import { formatCurrency } from '@/lib/cn';
+import { bookingsApi } from '@/lib/bookingsApi';
+import { paymentsApi, type Payment } from '@/lib/paymentsApi';
 
 const EXTRAS = [
   { id: 'driver', label: 'Professional driver', price: 40 },
@@ -38,6 +40,16 @@ export default function Booking() {
   const [extras, setExtras] = useState<string[]>([]);
   const [insurance, setInsurance] = useState('basic');
   const [confirmed, setConfirmed] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Payment step (after the booking is created).
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [payRef, setPayRef] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   const days = useMemo(() => {
     if (!form.pickupDate || !form.returnDate) return 1;
@@ -49,15 +61,84 @@ export default function Booking() {
 
   const rate = vehicle?.pricePerDay ?? 0;
   const carTotal = rate * days;
-  const extrasTotal =
-    EXTRAS.filter((e) => extras.includes(e.id)).reduce((s, e) => s + e.price, 0) * days;
-  const insuranceTotal = (INSURANCE.find((i) => i.id === insurance)?.price ?? 0) * days;
+  const extrasPerDay = EXTRAS.filter((e) => extras.includes(e.id)).reduce((s, e) => s + e.price, 0);
+  const insurancePerDay = INSURANCE.find((i) => i.id === insurance)?.price ?? 0;
+  const extrasTotal = extrasPerDay * days;
+  const insuranceTotal = insurancePerDay * days;
   const subtotal = carTotal + extrasTotal + insuranceTotal;
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
   const toggleExtra = (id: string) =>
     setExtras((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  // Client validation gates the submit button; the server is the source of
+  // truth for both availability and the final price.
+  const datesValid =
+    !!form.pickupDate && !!form.returnDate && new Date(form.returnDate) > new Date(form.pickupDate);
+  const detailsValid = !!form.name.trim() && !!form.email.trim() && !!form.phone.trim();
+  const canSubmit = datesValid && detailsValid && !!vehicle && !submitting;
+
+  const handleSubmit = async () => {
+    if (!vehicle || !canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      // Confirm the dates are still free before taking the booking.
+      const { data: avail } = await bookingsApi.checkAvailability(
+        vehicle.slug,
+        form.pickupDate,
+        form.returnDate,
+      );
+      if (!avail.available) {
+        setError("This vehicle isn't available for those dates — try different dates.");
+        return;
+      }
+      const { data: booking } = await bookingsApi.create({
+        vehicleId: vehicle.id,
+        pickupLocation: form.pickupLocation,
+        dropoffLocation: form.dropoffLocation,
+        pickupDate: form.pickupDate,
+        returnDate: form.returnDate,
+        extras,
+        insurance,
+        extrasPerDay,
+        insurancePerDay,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+      });
+      setReference(booking.reference);
+      setBookingId(booking.id);
+      setConfirmed(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const pay = async (provider: 'manual' | 'mock') => {
+    if (!bookingId) return;
+    if (provider === 'manual' && !payRef.trim()) {
+      setPayError('Enter the transaction reference from your mobile-money payment.');
+      return;
+    }
+    setPaying(true);
+    setPayError(null);
+    try {
+      const { data } = await paymentsApi.create({
+        bookingId,
+        provider,
+        reference: provider === 'manual' ? payRef.trim() : undefined,
+      });
+      setPayment(data);
+    } catch (e) {
+      setPayError((e as Error).message);
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const field = 'w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
   const label = 'mb-1.5 block text-[13px] font-bold text-navy-700';
@@ -78,22 +159,93 @@ export default function Booking() {
           {/* Form */}
           <div className="space-y-6">
             {confirmed ? (
-              <div className="rounded-3xl border border-line bg-white p-10 text-center shadow-[var(--shadow-soft)]">
+              <div className="rounded-3xl border border-line bg-white p-8 text-center shadow-[var(--shadow-soft)] sm:p-10">
                 <div className="mb-6 flex justify-center"><Logo height={40} /></div>
-                <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
-                <h3 className="mt-4 font-display text-2xl font-extrabold text-navy-700">
-                  Booking Confirmed!
-                </h3>
-                <p className="mx-auto mt-2 max-w-md text-ink-500">
-                  We’ve reserved your {vehicle?.title}. A confirmation has been sent to{' '}
-                  <span className="font-semibold text-navy-700">{form.email || 'your email'}</span>.
-                </p>
-                <Link
-                  to="/fleet"
-                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-bold text-white"
-                >
-                  Browse more cars <ArrowRight className="size-4" />
-                </Link>
+
+                {payment?.status === 'PAID' ? (
+                  <>
+                    <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
+                    <h3 className="mt-4 font-display text-2xl font-extrabold text-navy-700">Booking confirmed!</h3>
+                    <p className="mx-auto mt-2 max-w-md text-ink-500">
+                      Payment received in full — your {vehicle?.title} is confirmed. A confirmation has been sent to your email and phone.
+                    </p>
+                  </>
+                ) : payment?.status === 'PENDING' ? (
+                  <>
+                    <Clock className="mx-auto size-16 text-amber-500" />
+                    <h3 className="mt-4 font-display text-2xl font-extrabold text-navy-700">Payment received — pending verification</h3>
+                    <p className="mx-auto mt-2 max-w-md text-ink-500">
+                      Thanks! We’ll verify your transaction reference and confirm your {vehicle?.title} shortly. A confirmation has been sent to your email and phone.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
+                    <h3 className="mt-4 font-display text-2xl font-extrabold text-navy-700">Booking received!</h3>
+                    <p className="mx-auto mt-2 max-w-md text-ink-500">
+                      We’ve reserved your {vehicle?.title}. A confirmation has been sent to{' '}
+                      <span className="font-semibold text-navy-700">{form.email || 'your email'}</span> and your phone — complete payment below to confirm.
+                    </p>
+                  </>
+                )}
+
+                {reference && (
+                  <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-line bg-mist-100 px-5 py-4">
+                    <div className="text-[12px] font-bold uppercase tracking-wide text-ink-400">Booking reference</div>
+                    <div className="mt-1 font-display text-xl font-extrabold tracking-wide text-navy-700">{reference}</div>
+                    <p className="mt-1 text-[12.5px] text-ink-400">Keep this reference to track your booking status anytime.</p>
+                  </div>
+                )}
+
+                {!payment && bookingId && (
+                  <div className="mx-auto mt-6 max-w-md rounded-2xl border border-line p-5 text-left">
+                    <h4 className="flex items-center justify-between font-display text-[15px] font-bold text-navy-700">
+                      <span>Complete payment</span>
+                      <span className="text-brand-600">{formatCurrency(total)}</span>
+                    </h4>
+
+                    {payError && (
+                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] font-medium text-red-600">{payError}</div>
+                    )}
+
+                    <div className="mt-4 rounded-xl border border-line p-4">
+                      <div className="flex items-center gap-2 text-[14px] font-bold text-navy-700">
+                        <Smartphone className="size-4 text-brand-600" /> Mobile money (EVC Plus / Zaad)
+                      </div>
+                      <p className="mt-1 text-[12.5px] text-ink-400">Pay by mobile money, then enter the transaction reference from your confirmation SMS.</p>
+                      <input
+                        value={payRef}
+                        onChange={(e) => setPayRef(e.target.value)}
+                        placeholder="Transaction reference"
+                        className="mt-3 w-full rounded-xl border border-line px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => pay('manual')}
+                        disabled={paying || !payRef.trim()}
+                        className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-3 text-[14px] font-bold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {paying ? 'Submitting…' : 'I’ve paid — submit reference'}
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => pay('mock')}
+                      disabled={paying}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-300 bg-brand-100/50 px-4 py-3 text-[13.5px] font-bold text-brand-600 hover:bg-brand-100 disabled:opacity-60"
+                    >
+                      <Zap className="size-4" /> Pay now (test)
+                    </button>
+                  </div>
+                )}
+
+                <div>
+                  <Link
+                    to="/fleet"
+                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-bold text-white"
+                  >
+                    Browse more cars <ArrowRight className="size-4" />
+                  </Link>
+                </div>
               </div>
             ) : (
               <>
@@ -213,12 +365,25 @@ export default function Booking() {
               </div>
 
               {!confirmed && (
-                <button
-                  onClick={() => setConfirmed(true)}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-4 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5"
-                >
-                  Confirm & Pay <ArrowRight className="size-4" />
-                </button>
+                <>
+                  {error && (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!canSubmit}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-4 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {submitting ? 'Processing…' : <>Confirm & Pay <ArrowRight className="size-4" /></>}
+                  </button>
+                  {!canSubmit && !submitting && (
+                    <p className="mt-2 text-center text-[12px] text-ink-400">
+                      Add pickup &amp; return dates and your name, email &amp; phone to continue.
+                    </p>
+                  )}
+                </>
               )}
               <p className="mt-3 text-center text-[12px] text-ink-400">
                 No charge until pickup · Free cancellation 48h before.

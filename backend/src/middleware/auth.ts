@@ -45,6 +45,24 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+/**
+ * Attach `req.user` when a valid Bearer token is present, but never reject —
+ * an absent or invalid token simply proceeds as a guest. Used by endpoints
+ * (e.g. guest checkout) that behave differently when signed in but don't
+ * require it.
+ */
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(header.slice(7), env.jwtSecret) as AuthPayload;
+    } catch {
+      /* ignore — proceed unauthenticated */
+    }
+  }
+  next();
+}
+
 /** Require the caller to have at least one of the given roles. */
 export function requireRole(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
