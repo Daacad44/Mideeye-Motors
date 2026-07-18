@@ -10,6 +10,10 @@ import { vehiclesRouter } from './routes/vehicles.js';
 import { authRouter } from './routes/auth.js';
 import { bookingsRouter } from './routes/bookings.js';
 import { paymentsRouter } from './routes/payments.js';
+import { maintenanceRouter } from './routes/maintenance.js';
+import { couponsRouter } from './routes/coupons.js';
+import { analyticsRouter } from './routes/analytics.js';
+import { reportsRouter } from './routes/reports.js';
 import { adminMediaRouter } from './routes/adminMedia.js';
 import { adminRouter } from './routes/admin.js';
 import { brandingRouter } from './routes/branding.js';
@@ -52,6 +56,10 @@ app.use('/api/admin/media', adminMediaRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/coupons', couponsRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/reports', reportsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err: Error & { status?: number; statusCode?: number; code?: string }, req: express.Request, res: express.Response, _next: express.NextFunction) => {

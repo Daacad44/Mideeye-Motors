@@ -62,6 +62,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
 model Vehicle {
   id            String       @id @default(cuid())
   title         String
@@ -103,6 +108,8 @@ model Vehicle {
   gallery       VehicleImage[]
 
   bookings      Booking[]
+  reviewList    Review[]              // `reviews` (Int) above is the cached count
+  maintenance   VehicleMaintenance[]
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -141,6 +148,7 @@ model User {
   status    UserStatus   @default(ACTIVE)
 
   bookings      Booking[]
+  reviews       Review[]
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   uploads       MediaImage[]   @relation("UploadedBy")
@@ -270,6 +278,8 @@ model Booking {
 
   days           Int
   subtotal       Int
+  discount       Int           @default(0)
+  couponCode     String?
   tax            Int
   total          Int
 
@@ -277,6 +287,7 @@ model Booking {
   createdAt      DateTime      @default(now())
 
   payments       Payment[]
+  review         Review?
 
   @@index([vehicleId])
   @@index([userId])
@@ -314,4 +325,54 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+/// A customer review, tied to the COMPLETED booking that earned it. The
+/// `@unique` bookingId enforces one review per booking. Vehicle.rating +
+/// Vehicle.reviews (count) are recomputed from these rows on each new review.
+model Review {
+  id        String   @id @default(cuid())
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+  @@index([userId])
+}
+
+/// An admin-scheduled maintenance window. Overlapping a maintenance range makes
+/// the vehicle unbookable (see lib/availability.ts isRangeBlocked).
+model VehicleMaintenance {
+  id        String   @id @default(cuid())
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId String
+  fromDate  DateTime
+  toDate    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+}
+
+/// Discount code. `value` is a whole percent (PERCENT) or whole USD amount
+/// (FIXED). Validity is checked server-side at both /validate and booking
+/// creation; `usedCount` is incremented atomically when a booking applies it.
+model Coupon {
+  id         String     @id @default(cuid())
+  code       String     @unique
+  type       CouponType
+  value      Int
+  maxUses    Int?
+  usedCount  Int        @default(0)
+  minDays    Int?
+  startsAt   DateTime?
+  expiresAt  DateTime?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
 }

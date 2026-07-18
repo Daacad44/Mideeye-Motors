@@ -2,26 +2,31 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
   Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus, CalendarCheck,
+  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
+import { MonthCalendar } from '@/components/MonthCalendar';
 import { ik } from '@/lib/imagekitImages';
-import { vehiclesApi } from '@/lib/vehiclesApi';
+import { vehiclesApi, type VehiclePayload, type BusyRange } from '@/lib/vehiclesApi';
+import { ApiError } from '@/lib/http';
 import { formatCurrency } from '@/lib/cn';
 import { useAuth } from '@/context/AuthContext';
 import { MediaManager } from '@/components/admin/MediaManager';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { AuditPanel } from '@/components/admin/AuditPanel';
 import { BookingsPanel } from '@/components/admin/BookingsPanel';
+import { AnalyticsPanel } from '@/components/admin/AnalyticsPanel';
+import { CouponsPanel } from '@/components/admin/CouponsPanel';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
-import type { Vehicle, VehicleGalleryImage } from '@/types/vehicle';
+import type { Vehicle, VehicleGalleryImage, VehicleCategory, Transmission, FuelType } from '@/types/vehicle';
 
-type Tab = 'fleet' | 'media' | 'bookings' | 'users' | 'audit';
+type Tab = 'analytics' | 'fleet' | 'media' | 'bookings' | 'coupons' | 'users' | 'audit';
 
 export default function Admin() {
   const { user, loading, isStaff, hasRole, logout } = useAuth();
-  const [tab, setTab] = useState<Tab>('media');
+  const [tab, setTab] = useState<Tab>('analytics');
 
   if (loading) {
     return <div className="grid min-h-screen place-items-center bg-mist-100"><span className="size-8 animate-spin rounded-full border-2 border-line border-t-brand-600" /></div>;
@@ -42,9 +47,11 @@ export default function Admin() {
 
   const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
   const allTabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, show: true },
     { id: 'media', label: 'Media Library', icon: Images, show: true },
     { id: 'fleet', label: 'Fleet', icon: Car, show: true },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck, show: true },
+    { id: 'coupons', label: 'Coupons', icon: Ticket, show: isAdmin },
     { id: 'users', label: 'Team & Roles', icon: Users, show: isAdmin },
     { id: 'audit', label: 'Audit Log', icon: ScrollText, show: isAdmin },
   ];
@@ -134,9 +141,11 @@ export default function Admin() {
         </header>
 
         <main className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
+          {tab === 'analytics' && <AnalyticsPanel />}
           {tab === 'media' && <MediaManager />}
           {tab === 'fleet' && <FleetPanel />}
           {tab === 'bookings' && <BookingsPanel />}
+          {tab === 'coupons' && <CouponsPanel />}
           {tab === 'users' && <UsersPanel />}
           {tab === 'audit' && <AuditPanel />}
         </main>
@@ -145,15 +154,20 @@ export default function Admin() {
   );
 }
 
-/* ── Fleet management (pricing / featured / availability / per-vehicle gallery) ── */
+/* ── Fleet management (create / edit / delete / pricing / calendar / gallery) ── */
 function FleetPanel() {
   const { vehicles: initial } = useVehicles();
   const [fleet, setFleet] = useState<Vehicle[]>([]);
   const [managing, setManaging] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Vehicle | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [calendarFor, setCalendarFor] = useState<Vehicle | null>(null);
+  const [deleting, setDeleting] = useState<Vehicle | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setFleet(initial), [initial]);
   const patchLocal = (id: string, p: Partial<Vehicle>) => setFleet((f) => f.map((v) => (v.id === id ? { ...v, ...p } : v)));
+  const upsertLocal = (v: Vehicle) => setFleet((f) => (f.some((x) => x.id === v.id) ? f.map((x) => (x.id === v.id ? v : x)) : [v, ...f]));
 
   const patchPricing = async (id: string, pricePerDay: number) => {
     patchLocal(id, { pricePerDay });
@@ -197,13 +211,19 @@ function FleetPanel() {
       {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
 
       <div className="mt-8 rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
-        <h2 className="mb-4 font-display text-lg font-bold text-navy-700">Manage fleet</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-navy-700">Manage fleet</h2>
+          <button onClick={() => setCreating(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-700">
+            <Plus className="size-4" /> Add vehicle
+          </button>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-sm">
             <thead>
               <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
                 <th className="pb-3">Vehicle</th><th className="pb-3">Price / day</th>
-                <th className="pb-3 text-center">Featured</th><th className="pb-3 text-center">Available</th><th className="pb-3 text-right">Media</th>
+                <th className="pb-3 text-center">Featured</th><th className="pb-3 text-center">Available</th><th className="pb-3 text-right">Manage</th>
               </tr>
             </thead>
             <tbody>
@@ -226,13 +246,22 @@ function FleetPanel() {
                   </td>
                   <td className="py-3 text-center"><Toggle on={v.featured} onClick={() => toggle(v.id, 'featured', !v.featured)} /></td>
                   <td className="py-3 text-center"><Toggle on={v.availability} onClick={() => toggle(v.id, 'availability', !v.availability)} /></td>
-                  <td className="py-3 text-right">
-                    <button onClick={() => setManaging(v.id)} className="inline-flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
-                      <ImageIcon className="size-4" /> {v.gallery.length} images
-                    </button>
+                  <td className="py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => setManaging(v.id)} title="Images"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
+                        <ImageIcon className="size-3.5" /> {v.gallery.length}
+                      </button>
+                      <IB title="Availability calendar" onClick={() => setCalendarFor(v)}><CalendarDays className="size-4" /></IB>
+                      <IB title="Edit vehicle" onClick={() => setEditing(v)}><Pencil className="size-4" /></IB>
+                      <IB title="Delete vehicle" danger onClick={() => setDeleting(v)}><Trash2 className="size-4" /></IB>
+                    </div>
                   </td>
                 </tr>
               ))}
+              {fleet.length === 0 && (
+                <tr><td colSpan={5} className="py-10 text-center text-ink-400">No vehicles yet — click “Add vehicle”.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -245,6 +274,305 @@ function FleetPanel() {
           onChange={(p) => patchLocal(active.id, p)}
         />
       )}
+
+      {(creating || editing) && (
+        <VehicleFormDrawer
+          vehicle={editing}
+          onClose={() => { setCreating(false); setEditing(null); }}
+          onSaved={(v) => {
+            const wasNew = !editing;
+            upsertLocal(v);
+            setCreating(false);
+            setEditing(null);
+            if (wasNew) setManaging(v.id); // jump straight to attaching photos
+          }}
+        />
+      )}
+
+      {calendarFor && <CalendarDrawer vehicle={calendarFor} onClose={() => setCalendarFor(null)} />}
+
+      {deleting && (
+        <DeleteVehicleDialog
+          vehicle={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={(id) => { setFleet((f) => f.filter((x) => x.id !== id)); setDeleting(null); }}
+          onMarkedUnavailable={(id) => { patchLocal(id, { availability: false }); setDeleting(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+const CATEGORIES: VehicleCategory[] = ['SUV', 'Sedan', 'Luxury', 'Pickup', 'Electric', 'Van'];
+const TRANSMISSIONS: Transmission[] = ['Automatic', 'Manual'];
+const FUELS: FuelType[] = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+
+function emptyVehicleForm(): VehiclePayload {
+  return {
+    title: '', category: 'SUV', brand: '', year: new Date().getFullYear(),
+    pricePerDay: 50, pricePerWeek: 300, pricePerMonth: 1000,
+    transmission: 'Automatic', fuelType: 'Petrol', engine: '', horsePower: 0,
+    seats: 5, doors: 4, color: '', mileage: 'Unlimited', location: 'Mogadishu',
+    description: '', features: [], featured: false, availability: true,
+  };
+}
+
+/* ── Add / Edit vehicle slide-over (reuses the ImageManager drawer styling) ── */
+function VehicleFormDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle | null; onClose: () => void; onSaved: (v: Vehicle) => void }) {
+  const [form, setForm] = useState<VehiclePayload>(() =>
+    vehicle
+      ? {
+          title: vehicle.title, category: vehicle.category, brand: vehicle.brand, year: vehicle.year,
+          pricePerDay: vehicle.pricePerDay, pricePerWeek: vehicle.pricePerWeek, pricePerMonth: vehicle.pricePerMonth,
+          transmission: vehicle.transmission, fuelType: vehicle.fuelType, engine: vehicle.engine, horsePower: vehicle.horsePower,
+          seats: vehicle.seats, doors: vehicle.doors, color: vehicle.color, mileage: vehicle.mileage, location: vehicle.location,
+          description: vehicle.description, features: vehicle.features, featured: vehicle.featured, availability: vehicle.availability,
+        }
+      : emptyVehicleForm(),
+  );
+  const [featuresText, setFeaturesText] = useState(vehicle ? vehicle.features.join(', ') : '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const set = <K extends keyof VehiclePayload>(k: K, val: VehiclePayload[K]) => setForm((f) => ({ ...f, [k]: val }));
+  const num = (v: string) => (v === '' ? 0 : Number(v));
+
+  const submit = async () => {
+    if (!form.title.trim()) { setError('Title is required.'); return; }
+    setBusy(true);
+    setError(null);
+    const payload: VehiclePayload = { ...form, features: featuresText.split(',').map((s) => s.trim()).filter(Boolean) };
+    try {
+      const res = vehicle ? await vehiclesApi.patch(vehicle.id, payload) : await vehiclesApi.create(payload);
+      onSaved(res.data);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  const field = 'w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+  const label = 'mb-1 block text-[12px] font-bold text-navy-700';
+
+  return (
+    <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-xl font-bold text-navy-700">{vehicle ? 'Edit vehicle' : 'Add vehicle'}</h3>
+          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
+        </div>
+
+        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="col-span-2"><label className={label}>Title</label><input className={field} value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Toyota Land Cruiser 2024" /></div>
+          <div><label className={label}>Category</label>
+            <select className={field} value={form.category} onChange={(e) => set('category', e.target.value as VehicleCategory)}>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+          </div>
+          <div><label className={label}>Brand</label><input className={field} value={form.brand} onChange={(e) => set('brand', e.target.value)} placeholder="Toyota" /></div>
+          <div><label className={label}>Year</label><input type="number" className={field} value={form.year} onChange={(e) => set('year', num(e.target.value))} /></div>
+          <div><label className={label}>Colour</label><input className={field} value={form.color} onChange={(e) => set('color', e.target.value)} placeholder="Pearl White" /></div>
+          <div><label className={label}>Price / day ($)</label><input type="number" className={field} value={form.pricePerDay} onChange={(e) => set('pricePerDay', num(e.target.value))} /></div>
+          <div><label className={label}>Price / week ($)</label><input type="number" className={field} value={form.pricePerWeek} onChange={(e) => set('pricePerWeek', num(e.target.value))} /></div>
+          <div><label className={label}>Price / month ($)</label><input type="number" className={field} value={form.pricePerMonth} onChange={(e) => set('pricePerMonth', num(e.target.value))} /></div>
+          <div><label className={label}>Transmission</label>
+            <select className={field} value={form.transmission} onChange={(e) => set('transmission', e.target.value as Transmission)}>{TRANSMISSIONS.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+          </div>
+          <div><label className={label}>Fuel</label>
+            <select className={field} value={form.fuelType} onChange={(e) => set('fuelType', e.target.value as FuelType)}>{FUELS.map((f) => <option key={f} value={f}>{f}</option>)}</select>
+          </div>
+          <div><label className={label}>Engine</label><input className={field} value={form.engine} onChange={(e) => set('engine', e.target.value)} placeholder="3.5L V6" /></div>
+          <div><label className={label}>Horsepower</label><input type="number" className={field} value={form.horsePower} onChange={(e) => set('horsePower', num(e.target.value))} /></div>
+          <div><label className={label}>Seats</label><input type="number" className={field} value={form.seats} onChange={(e) => set('seats', num(e.target.value))} /></div>
+          <div><label className={label}>Doors</label><input type="number" className={field} value={form.doors} onChange={(e) => set('doors', num(e.target.value))} /></div>
+          <div><label className={label}>Mileage</label><input className={field} value={form.mileage} onChange={(e) => set('mileage', e.target.value)} placeholder="Unlimited" /></div>
+          <div><label className={label}>Location</label><input className={field} value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Mogadishu" /></div>
+          <div className="col-span-2"><label className={label}>Description</label><textarea className={field + ' min-h-[90px]'} value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
+          <div className="col-span-2"><label className={label}>Features (comma-separated)</label><input className={field} value={featuresText} onChange={(e) => setFeaturesText(e.target.value)} placeholder="Bluetooth, Sunroof, 4WD" /></div>
+          <label className="flex items-center gap-2 text-[13px] font-bold text-navy-700"><input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} /> Featured</label>
+          <label className="flex items-center gap-2 text-[13px] font-bold text-navy-700"><input type="checkbox" checked={form.availability} onChange={(e) => set('availability', e.target.checked)} /> Available</label>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button onClick={submit} disabled={busy}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-bold text-white hover:bg-navy-700 disabled:opacity-60">
+            {busy ? <Loader2 className="size-4 animate-spin" /> : vehicle ? 'Save changes' : 'Create vehicle'}
+          </button>
+          <button onClick={onClose} className="rounded-xl border border-line px-5 py-3 text-[14px] font-bold text-navy-700 hover:border-brand-400">Cancel</button>
+        </div>
+        {!vehicle && <p className="mt-3 text-center text-[12px] text-ink-400">After creating, attach photos from the Media Library in the image manager that opens.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Availability calendar + maintenance blocks (slide-over) ── */
+function CalendarDrawer({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
+  const [ranges, setRanges] = useState<BusyRange[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ fromDate: '', toDate: '', reason: '' });
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    const from = new Date(Date.now() - 30 * 86400000).toISOString();
+    const to = new Date(Date.now() + 180 * 86400000).toISOString();
+    return vehiclesApi
+      .getCalendar(vehicle.id, from, to)
+      .then((r) => setRanges(r.data))
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [vehicle.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addBlock = async () => {
+    if (!form.fromDate || !form.toDate) { setError('Pick a start and end date.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await vehiclesApi.addMaintenance(vehicle.id, { fromDate: form.fromDate, toDate: form.toDate, reason: form.reason || undefined });
+      setForm({ fromDate: '', toDate: '', reason: '' });
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeBlock = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await vehiclesApi.removeMaintenance(id);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const blocks = ranges.filter((r) => r.type === 'maintenance');
+  const field = 'w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+
+  return (
+    <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-display text-xl font-bold text-navy-700">{vehicle.title}</h3>
+            <p className="text-[13px] text-ink-400">Availability calendar</p>
+          </div>
+          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
+        </div>
+
+        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+
+        <div className="mt-5 rounded-2xl border border-line p-4">
+          {loading ? (
+            <div className="grid place-items-center py-10"><Loader2 className="size-6 animate-spin text-brand-500" /></div>
+          ) : (
+            <MonthCalendar ranges={ranges} />
+          )}
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-line p-4">
+          <h4 className="flex items-center gap-2 font-display text-[15px] font-bold text-navy-700"><Wrench className="size-4 text-amber-500" /> Block for maintenance</h4>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div><label className="mb-1 block text-[12px] font-bold text-navy-700">From</label><input type="date" className={field} value={form.fromDate} onChange={(e) => setForm({ ...form, fromDate: e.target.value })} /></div>
+            <div><label className="mb-1 block text-[12px] font-bold text-navy-700">To</label><input type="date" className={field} value={form.toDate} onChange={(e) => setForm({ ...form, toDate: e.target.value })} /></div>
+          </div>
+          <input className={field + ' mt-2'} placeholder="Reason (optional)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+          <button onClick={addBlock} disabled={busy}
+            className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-amber-600 disabled:opacity-60">
+            Add maintenance block
+          </button>
+        </div>
+
+        {blocks.length > 0 && (
+          <div className="mt-5 space-y-2">
+            <h4 className="text-[12px] font-bold uppercase tracking-wide text-ink-400">Scheduled maintenance</h4>
+            {blocks.map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-xl border border-line px-3 py-2.5">
+                <div>
+                  <div className="text-[13.5px] font-semibold text-navy-700">
+                    {new Date(b.from).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} – {new Date(b.to).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}
+                  </div>
+                  {b.reason && <div className="text-[12px] text-ink-400">{b.reason}</div>}
+                </div>
+                {b.id && <IB title="Remove block" danger onClick={() => removeBlock(b.id!)}><Trash2 className="size-4" /></IB>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Delete confirmation (surfaces the 409 "has bookings" guard) ── */
+function DeleteVehicleDialog({ vehicle, onClose, onDeleted, onMarkedUnavailable }: {
+  vehicle: Vehicle; onClose: () => void; onDeleted: (id: string) => void; onMarkedUnavailable: (id: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
+
+  const del = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await vehiclesApi.remove(vehicle.id);
+      onDeleted(vehicle.id);
+    } catch (e) {
+      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) setConflict(true);
+      setBusy(false);
+    }
+  };
+
+  const markUnavailable = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await vehiclesApi.patch(vehicle.id, { availability: false });
+      onMarkedUnavailable(vehicle.id);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-center bg-navy-950/60 p-5 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-500"><Trash2 className="size-5" /></span>
+          <div>
+            <h3 className="font-display text-lg font-bold text-navy-700">Delete {vehicle.title}?</h3>
+            <p className="mt-1 text-[13.5px] text-ink-500">This permanently removes the vehicle. This can’t be undone.</p>
+          </div>
+        </div>
+
+        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2.5 text-[13.5px] font-bold text-navy-700 hover:border-brand-400">Cancel</button>
+          {conflict ? (
+            <button onClick={markUnavailable} disabled={busy}
+              className="rounded-xl bg-amber-500 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-amber-600 disabled:opacity-60">
+              Mark unavailable instead
+            </button>
+          ) : (
+            <button onClick={del} disabled={busy}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-red-600 disabled:opacity-60">
+              {busy ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

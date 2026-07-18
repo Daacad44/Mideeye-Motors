@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight, Smartphone, Zap, Clock } from 'lucide-react';
 import { useVehicle } from '@/hooks/useVehicles';
@@ -7,6 +7,7 @@ import { Logo } from '@/components/ui/Logo';
 import { formatCurrency } from '@/lib/cn';
 import { bookingsApi } from '@/lib/bookingsApi';
 import { paymentsApi, type Payment } from '@/lib/paymentsApi';
+import { couponsApi, type CouponValidation } from '@/lib/couponsApi';
 
 const EXTRAS = [
   { id: 'driver', label: 'Professional driver', price: 40 },
@@ -51,6 +52,28 @@ export default function Booking() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
+  // Promo code (validated server-side; the discount is display-only here and is
+  // re-computed authoritatively on the server at booking creation).
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState<CouponValidation | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  // Proactive availability heads-up as soon as both dates are chosen (reuses
+  // the Wave 1 checkAvailability endpoint — the submit handler re-checks too).
+  const [dateWarning, setDateWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    const valid = !!form.pickupDate && !!form.returnDate && new Date(form.returnDate) > new Date(form.pickupDate);
+    if (!vehicle || !valid) { setDateWarning(null); return; }
+    let alive = true;
+    bookingsApi
+      .checkAvailability(vehicle.slug, form.pickupDate, form.returnDate)
+      .then((r) => { if (alive) setDateWarning(r.data.available ? null : 'These dates are unavailable (already booked or under maintenance). Try different dates.'); })
+      .catch(() => { if (alive) setDateWarning(null); });
+    return () => { alive = false; };
+  }, [vehicle?.slug, form.pickupDate, form.returnDate]);
+
   const days = useMemo(() => {
     if (!form.pickupDate || !form.returnDate) return 1;
     const d =
@@ -66,11 +89,48 @@ export default function Booking() {
   const extrasTotal = extrasPerDay * days;
   const insuranceTotal = insurancePerDay * days;
   const subtotal = carTotal + extrasTotal + insuranceTotal;
-  const tax = subtotal * TAX_RATE;
-  const total = subtotal + tax;
+  const discount = coupon?.valid ? coupon.discount ?? 0 : 0;
+  const discountedSubtotal = Math.max(0, subtotal - discount);
+  const tax = discountedSubtotal * TAX_RATE;
+  const total = discountedSubtotal + tax;
 
   const toggleExtra = (id: string) =>
     setExtras((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const { data } = await couponsApi.validate({ code, days, subtotal: Math.round(subtotal) });
+      if (data.valid) setCoupon(data);
+      else { setCoupon(null); setCouponError(data.message ?? 'This promo code is invalid or expired.'); }
+    } catch (e) {
+      setCouponError((e as Error).message);
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => { setCoupon(null); setCouponInput(''); setCouponError(null); };
+
+  // Re-validate an applied coupon when the duration or cart total changes.
+  useEffect(() => {
+    const code = coupon?.code;
+    if (!code) return;
+    let alive = true;
+    couponsApi
+      .validate({ code, days, subtotal: Math.round(subtotal) })
+      .then((r) => {
+        if (!alive) return;
+        if (r.data.valid) setCoupon(r.data);
+        else { setCoupon(null); setCouponError('This promo code no longer applies to your booking.'); }
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, subtotal]);
 
   // Client validation gates the submit button; the server is the source of
   // truth for both availability and the final price.
@@ -107,6 +167,7 @@ export default function Booking() {
         name: form.name,
         email: form.email,
         phone: form.phone,
+        couponCode: coupon?.valid ? coupon.code : undefined,
       });
       setReference(booking.reference);
       setBookingId(booking.id);
@@ -272,6 +333,11 @@ export default function Booking() {
                         onChange={(e) => setForm({ ...form, returnDate: e.target.value })} />
                     </div>
                   </div>
+                  {dateWarning && (
+                    <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[13px] font-medium text-amber-700">
+                      {dateWarning}
+                    </div>
+                  )}
                 </Panel>
 
                 <Panel title="Add extras" icon={Sparkles}>
@@ -354,8 +420,30 @@ export default function Booking() {
                 <Row label={`Rate × ${days}`} value={formatCurrency(carTotal)} />
                 {extrasTotal > 0 && <Row label="Extras" value={formatCurrency(extrasTotal)} />}
                 {insuranceTotal > 0 && <Row label="Insurance" value={formatCurrency(insuranceTotal)} />}
+                {discount > 0 && <Row label={`Discount${coupon?.code ? ` (${coupon.code})` : ''}`} value={`- ${formatCurrency(discount)}`} />}
                 <Row label="Tax (5%)" value={formatCurrency(tax)} />
               </dl>
+
+              {!confirmed && (
+                <div className="mt-4 border-t border-line pt-4">
+                  {coupon?.valid ? (
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
+                      <span className="text-[13px] font-bold text-emerald-700">Code {coupon.code} applied</span>
+                      <button onClick={removeCoupon} className="text-[12px] font-bold text-ink-400 hover:text-red-500">Remove</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Promo code"
+                        className="min-w-0 flex-1 rounded-xl border border-line px-3 py-2.5 text-[13.5px] font-mono uppercase text-navy-700 focus:border-brand-400 focus:outline-none" />
+                      <button onClick={applyCoupon} disabled={applyingCoupon || !couponInput.trim()}
+                        className="rounded-xl bg-navy-700 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-800 disabled:opacity-60">
+                        {applyingCoupon ? '…' : 'Apply'}
+                      </button>
+                    </div>
+                  )}
+                  {couponError && <p className="mt-2 text-[12px] font-medium text-red-600">{couponError}</p>}
+                </div>
+              )}
 
               <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
                 <span className="font-display font-bold text-navy-700">Total</span>

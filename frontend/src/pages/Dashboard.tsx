@@ -154,7 +154,7 @@ export default function Dashboard() {
                       <td className="py-4 text-right">
                         {b.vehicle?.slug && (
                           <Link to={`/fleet/${b.vehicle.slug}`} className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:underline">
-                            View <ArrowRight className="size-3.5" />
+                            {b.status === 'COMPLETED' ? 'Rate your trip' : 'View'} <ArrowRight className="size-3.5" />
                           </Link>
                         )}
                       </td>
