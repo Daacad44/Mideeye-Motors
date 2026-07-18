@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, MapPin, CalendarDays, ShieldCheck, Sparkles, ArrowRight, Smartphone, Zap, Clock } from 'lucide-react';
 import { useVehicle } from '@/hooks/useVehicles';
@@ -50,6 +50,21 @@ export default function Booking() {
   const [payRef, setPayRef] = useState('');
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+
+  // Proactive availability heads-up as soon as both dates are chosen (reuses
+  // the Wave 1 checkAvailability endpoint — the submit handler re-checks too).
+  const [dateWarning, setDateWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    const valid = !!form.pickupDate && !!form.returnDate && new Date(form.returnDate) > new Date(form.pickupDate);
+    if (!vehicle || !valid) { setDateWarning(null); return; }
+    let alive = true;
+    bookingsApi
+      .checkAvailability(vehicle.slug, form.pickupDate, form.returnDate)
+      .then((r) => { if (alive) setDateWarning(r.data.available ? null : 'These dates are unavailable (already booked or under maintenance). Try different dates.'); })
+      .catch(() => { if (alive) setDateWarning(null); });
+    return () => { alive = false; };
+  }, [vehicle?.slug, form.pickupDate, form.returnDate]);
 
   const days = useMemo(() => {
     if (!form.pickupDate || !form.returnDate) return 1;
@@ -272,6 +287,11 @@ export default function Booking() {
                         onChange={(e) => setForm({ ...form, returnDate: e.target.value })} />
                     </div>
                   </div>
+                  {dateWarning && (
+                    <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[13px] font-medium text-amber-700">
+                      {dateWarning}
+                    </div>
+                  )}
                 </Panel>
 
                 <Panel title="Add extras" icon={Sparkles}>
