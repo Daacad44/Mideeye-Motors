@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Clock, Activity, DollarSign, BadgeCheck } from 'lucide-react';
+import { ClipboardList, Clock, Activity, DollarSign, BadgeCheck, Download } from 'lucide-react';
 import { VehicleImage } from '@/components/VehicleImage';
 import { bookingsApi, type Booking, type BookingStatus } from '@/lib/bookingsApi';
 import { paymentsApi, type PaymentStatus } from '@/lib/paymentsApi';
+import { reportsApi } from '@/lib/reportsApi';
 import { formatCurrency } from '@/lib/cn';
 
 const STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
@@ -103,6 +104,12 @@ export function BookingsPanel() {
               <option value="">All</option>
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
+            <button
+              onClick={() => reportsApi.bookingsCsv({ from: '2000-01-01T00:00:00.000Z', status: filter || undefined }).catch((e) => setError((e as Error).message))}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600"
+            >
+              <Download className="size-4" /> Export CSV
+            </button>
           </div>
         </div>
 
