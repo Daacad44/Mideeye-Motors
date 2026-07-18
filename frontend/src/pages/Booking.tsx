@@ -225,7 +225,7 @@ export default function Booking() {
           <div className="space-y-6">
             {confirmed ? (
               <div className="rounded-3xl border border-line bg-white p-8 text-center shadow-[var(--shadow-soft)] sm:p-10">
-                <div className="mb-6 flex justify-center"><Logo height={40} /></div>
+                <div className="mb-6 flex justify-center"><Logo height={48} /></div>
 
                 {payment?.status === 'PAID' ? (
                   <>

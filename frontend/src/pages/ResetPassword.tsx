@@ -43,7 +43,7 @@ export default function ResetPassword() {
         </Link>
 
         <div className="rounded-3xl border border-line bg-white p-8 shadow-[var(--shadow-soft)]">
-          <div className="mb-6 flex justify-center"><Logo height={36} /></div>
+          <div className="mb-6 flex justify-center"><Logo height={52} /></div>
 
           {done ? (
             <div className="text-center">
