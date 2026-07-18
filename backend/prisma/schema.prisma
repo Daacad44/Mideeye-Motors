@@ -62,6 +62,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
 model Vehicle {
   id            String       @id @default(cuid())
   title         String
@@ -273,6 +278,8 @@ model Booking {
 
   days           Int
   subtotal       Int
+  discount       Int           @default(0)
+  couponCode     String?
   tax            Int
   total          Int
 
@@ -351,4 +358,21 @@ model VehicleMaintenance {
   createdAt DateTime @default(now())
 
   @@index([vehicleId])
+}
+
+/// Discount code. `value` is a whole percent (PERCENT) or whole USD amount
+/// (FIXED). Validity is checked server-side at both /validate and booking
+/// creation; `usedCount` is incremented atomically when a booking applies it.
+model Coupon {
+  id         String     @id @default(cuid())
+  code       String     @unique
+  type       CouponType
+  value      Int
+  maxUses    Int?
+  usedCount  Int        @default(0)
+  minDays    Int?
+  startsAt   DateTime?
+  expiresAt  DateTime?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
 }

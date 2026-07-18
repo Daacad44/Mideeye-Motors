@@ -7,6 +7,7 @@ import { audit } from '../lib/audit.js';
 import { authenticate, optionalAuthenticate, requireStaff } from '../middleware/auth.js';
 import { isRangeBlocked } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
+import { computeCouponDiscount } from './coupons.js';
 import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
 
 export const bookingsRouter = Router();
@@ -72,6 +73,7 @@ const schema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(1),
+  couponCode: z.string().optional(),
 });
 
 // POST /api/bookings — create a booking with server-side price calculation.
@@ -99,29 +101,51 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
 
   const days = Math.max(1, Math.round((ret.getTime() - pickup.getTime()) / 86400000) || 1);
   const subtotal = (vehicle.pricePerDay + b.extrasPerDay + b.insurancePerDay) * days;
-  const tax = Math.round(subtotal * TAX_RATE);
-  const total = subtotal + tax;
 
-  const booking = await prisma.booking.create({
-    data: {
-      vehicleId: b.vehicleId,
-      userId: req.user?.id ?? null,
-      customerName: b.name,
-      customerEmail: b.email,
-      customerPhone: b.phone,
-      pickupLocation: b.pickupLocation,
-      dropoffLocation: b.dropoffLocation,
-      pickupDate: pickup,
-      returnDate: ret,
-      extras: b.extras,
-      insurance: b.insurance,
-      days,
-      subtotal,
-      tax,
-      total,
-      status: 'PENDING',
-    },
-    include: bookingInclude,
+  // Re-validate the coupon server-side; the client-sent discount is never trusted.
+  let discount = 0;
+  let appliedCode: string | null = null;
+  if (b.couponCode) {
+    const coupon = await prisma.coupon.findUnique({ where: { code: b.couponCode.trim().toUpperCase() } });
+    const check = computeCouponDiscount(coupon, days, subtotal);
+    if (!check.valid) return res.status(400).json({ error: 'This promo code is invalid or expired.' });
+    discount = check.discount;
+    appliedCode = coupon!.code;
+  }
+
+  const discountedSubtotal = Math.max(0, subtotal - discount);
+  const tax = Math.round(discountedSubtotal * TAX_RATE);
+  const total = discountedSubtotal + tax;
+
+  // Create the booking and bump the coupon's usage atomically.
+  const booking = await prisma.$transaction(async (tx) => {
+    const created = await tx.booking.create({
+      data: {
+        vehicleId: b.vehicleId,
+        userId: req.user?.id ?? null,
+        customerName: b.name,
+        customerEmail: b.email,
+        customerPhone: b.phone,
+        pickupLocation: b.pickupLocation,
+        dropoffLocation: b.dropoffLocation,
+        pickupDate: pickup,
+        returnDate: ret,
+        extras: b.extras,
+        insurance: b.insurance,
+        days,
+        subtotal,
+        discount,
+        couponCode: appliedCode,
+        tax,
+        total,
+        status: 'PENDING',
+      },
+      include: bookingInclude,
+    });
+    if (appliedCode) {
+      await tx.coupon.update({ where: { code: appliedCode }, data: { usedCount: { increment: 1 } } });
+    }
+    return created;
   });
 
   // A new booking changes the vehicle's date-range availability.

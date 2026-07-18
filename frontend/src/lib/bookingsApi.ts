@@ -20,6 +20,8 @@ export interface Booking {
   insurance: string;
   days: number;
   subtotal: number;
+  discount: number;
+  couponCode: string | null;
   tax: number;
   total: number;
   status: BookingStatus;
@@ -48,6 +50,8 @@ export interface CreateBookingPayload {
   name: string;
   email: string;
   phone: string;
+  /** Optional promo code — the server re-validates and recomputes the discount. */
+  couponCode?: string;
 }
 
 export const bookingsApi = {
