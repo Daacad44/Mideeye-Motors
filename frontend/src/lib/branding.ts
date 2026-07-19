@@ -91,3 +91,13 @@ export function useBranding(): Branding {
 export function useLogoUrl(): string | null {
   return useBranding().logo?.url ?? null;
 }
+
+/**
+ * Convenience hook for the home hero/banner. Returns the resolved
+ * `{ url, alt }` an admin set from the Media Library, or `null` when none is
+ * set (so the hero can fall back gracefully). Shares `useBranding()`'s
+ * subscription, so `refreshBranding()` updates it live — same as the logo.
+ */
+export function useHeroImage(): BrandingImage | null {
+  return useBranding().heroImage ?? null;
+}
