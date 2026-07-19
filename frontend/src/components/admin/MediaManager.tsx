@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   UploadCloud, Search, Trash2, RefreshCw, Check, Link2, Hash,
-  FolderOpen, X, Loader2, Image as ImageIcon, Pencil, ArrowUpDown, ShieldAlert, Sparkles,
+  FolderOpen, X, Loader2, Image as ImageIcon, Pencil, ArrowUpDown, ShieldAlert, Sparkles, LayoutTemplate,
 } from 'lucide-react';
 import { mediaApi, type MediaSort } from '@/lib/mediaApi';
 import { ik } from '@/lib/imagekitImages';
@@ -40,6 +40,8 @@ export function MediaManager() {
   const [confirmDelete, setConfirmDelete] = useState<{ id?: string; ids?: string[]; usedBy: string[] } | null>(null);
   const [logoBusy, setLogoBusy] = useState<string | null>(null);
   const [logoSet, setLogoSet] = useState<string | null>(null);
+  const [heroBusy, setHeroBusy] = useState<string | null>(null);
+  const [heroSet, setHeroSet] = useState<string | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
@@ -122,6 +124,27 @@ export function MediaManager() {
       setError((e as Error).message);
     } finally {
       setLogoBusy(null);
+    }
+  };
+
+  /**
+   * Mark this image as the home hero/banner. Persists via PATCH /api/branding
+   * (heroImageId), then refreshes the branding cache so the home hero swaps to
+   * it without a page reload — mirrors `setAsLogo`.
+   */
+  const setAsHero = async (id: string) => {
+    setHeroBusy(id);
+    setError(null);
+    try {
+      await mediaApi.setBranding({ heroImageId: id });
+      await refreshBranding();
+      setHeroSet(id);
+      setTimeout(() => setHeroSet((c) => (c === id ? null : c)), 2000);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setHeroBusy(null);
     }
   };
 
@@ -331,6 +354,9 @@ export function MediaManager() {
                   <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <Action title="Set as site logo" onClick={() => setAsLogo(a.id)} active={logoSet === a.id}>
                       {logoBusy === a.id ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                    </Action>
+                    <Action title="Set as home hero" onClick={() => setAsHero(a.id)} active={heroSet === a.id}>
+                      {heroBusy === a.id ? <Loader2 className="size-4 animate-spin" /> : <LayoutTemplate className="size-4" />}
                     </Action>
                     <Action title="Copy URL" onClick={() => copy(ik(a.filePath, 'card'), a.id + 'u')} active={copied === a.id + 'u'}><Link2 className="size-4" /></Action>
                     <Action title="Copy ID (use on Fleet tab)" onClick={() => copy(a.id, a.id + 'p')} active={copied === a.id + 'p'}><Hash className="size-4" /></Action>

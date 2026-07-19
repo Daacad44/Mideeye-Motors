@@ -5,6 +5,7 @@ import { VehicleImage } from '../VehicleImage';
 import { SearchCard } from './SearchCard';
 import { getVehicleBySlug } from '@/data/vehicles';
 import { useI18n } from '@/context/LocaleContext';
+import { useHeroImage } from '@/lib/branding';
 
 const stats = [
   { value: '150+', labelKey: 'hero.statCars' },
@@ -15,6 +16,9 @@ const stats = [
 export function Hero() {
   const { t } = useI18n();
   const hero = getVehicleBySlug('toyota-land-cruiser-2024');
+  // Admin-set hero/banner image (Media Library). Falls back to the Land Cruiser
+  // vehicle image — then the branded placeholder — when none is set.
+  const heroImage = useHeroImage();
 
   return (
     <section className="relative overflow-hidden bg-[linear-gradient(118deg,#061423_0%,#0d2b50_52%,#0b67c2_128%)]">
@@ -78,14 +82,25 @@ export function Hero() {
             transition={{ duration: 1, ease: [0.19, 1, 0.22, 1], delay: 0.15 }}
           >
             <div className="absolute inset-0 animate-float">
-              <VehicleImage
-                filePath={hero?.heroImage?.filePath}
-                alt={hero?.heroImage?.alt || 'Toyota Land Cruiser 2024'}
-                preset="hero"
-                fit="contain"
-                priority
-                className="h-full w-full drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-              />
+              {heroImage ? (
+                <img
+                  src={heroImage.url}
+                  alt={heroImage.alt || 'Mideeye Motors'}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                  className="h-full w-full object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
+                />
+              ) : (
+                <VehicleImage
+                  filePath={hero?.heroImage?.filePath}
+                  alt={hero?.heroImage?.alt || 'Toyota Land Cruiser 2024'}
+                  preset="hero"
+                  fit="contain"
+                  priority
+                  className="h-full w-full drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
+                />
+              )}
             </div>
 
             <motion.div
