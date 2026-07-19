@@ -92,6 +92,24 @@ export const so: Dictionary = {
     noAccount: 'Akoon ma lihid? ',
     haveAccount: 'Akoon horay u leedahay? ',
     backHome: 'Ku noqo bogga hore',
+    // Left visual panel
+    panelBadge: 'Gelitaanka xubnaha',
+    heroLine1: 'Maamul safar',
+    heroLine2: 'kasta.',
+    heroCopy: 'Gal si aad u maamusho dalabyada, u kaydiso kuwa aad jeceshahay, oona u furto qiimaha xubnaha ee baabuurtayada heerka sare ah.',
+    benefitInsured: 'Baabuur caymis buuxa leh',
+    benefitFast: 'Ku dalbo daqiiqado gudahood',
+    benefitPricing: 'Qiimo xubnaha u gaar ah',
+    trustCars: '150+ baabuur heer sare',
+    trustRenters: '12K+ macaamiil faraxsan',
+    trustRating: 'Qiimayn 4.9',
+    // Reset / forgot password
+    resetTitle: 'Dib u deji furaha',
+    resetSub: 'Geli iimaylkaaga waxaanan kuu soo diri doonnaa link dib u dejin.',
+    sendReset: 'Dir linkiga dib u dejinta',
+    resetSent: 'Haddii iimaylkaas jiro, waxaan soo dirnay link dib u dejin. Fadlan fiiri sanduuqaaga iyo galka spam-ka.',
+    backToSignIn: 'Ku noqo galitaanka',
+    remembered: 'Ma xasuusatay? ',
   },
   footer: {
     tagline:
