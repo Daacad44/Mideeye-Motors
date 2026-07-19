@@ -89,6 +89,24 @@ export const en = {
     noAccount: 'Don’t have an account? ',
     haveAccount: 'Already have an account? ',
     backHome: 'Back to home',
+    // Left visual panel
+    panelBadge: 'Member access',
+    heroLine1: 'Command every',
+    heroLine2: 'journey.',
+    heroCopy: 'Sign in to manage bookings, save favourites and unlock member pricing across our premium fleet.',
+    benefitInsured: 'Fully insured fleet',
+    benefitFast: 'Book in minutes',
+    benefitPricing: 'Member-only pricing',
+    trustCars: '150+ premium cars',
+    trustRenters: '12K+ happy renters',
+    trustRating: '4.9 rating',
+    // Reset / forgot password
+    resetTitle: 'Reset password',
+    resetSub: 'Enter your email and we’ll send you a reset link.',
+    sendReset: 'Send reset link',
+    resetSent: 'If that email exists, we’ve sent a reset link. Check your inbox and spam folder.',
+    backToSignIn: 'Back to sign in',
+    remembered: 'Remembered it? ',
   },
   footer: {
     tagline:
