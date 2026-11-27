@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ik, ikSrcSet, type Preset } from '@/lib/imagekitImages';
 import { cn } from '@/lib/cn';
+import { useI18n } from '@/context/LocaleContext';
 
 type Props = {
   filePath: string | undefined | null;
@@ -71,28 +72,26 @@ export function VehicleImage({
   );
 }
 
-/** On-brand placeholder used before real photos exist. */
+/** Shown when a vehicle has no photo yet — never another car's photo. */
 function FallbackCar({ className }: { className?: string }) {
+  const { t } = useI18n();
   return (
-    <div className={cn('grid place-items-center bg-mist-200', className)}>
-      <svg
-        viewBox="0 0 240 120"
-        className="w-3/4 max-w-[220px] opacity-40"
-        fill="none"
-        aria-hidden
-      >
+    <div className={cn('red-glow @container flex flex-col items-center justify-center gap-2 bg-inset', className)}>
+      <svg viewBox="0 0 240 110" className="w-3/5 max-w-[200px]" fill="none" aria-hidden>
         <path
-          d="M28 78c8-24 30-38 58-38 24 0 40 8 52 24l40 4c14 2 22 8 22 18v6H28z"
-          fill="#0b67c2"
-          fillOpacity="0.14"
-          stroke="#0b67c2"
-          strokeWidth="3"
+          d="M24 74c8-22 30-36 58-36 24 0 40 8 52 22l42 4c14 2 24 8 24 18v8H24z"
+          fill="#ffffff"
+          fillOpacity="0.04"
+          stroke="#ffffff"
+          strokeOpacity="0.22"
+          strokeWidth="2.5"
           strokeLinejoin="round"
         />
-        <circle cx="78" cy="90" r="14" fill="#061423" fillOpacity="0.15" stroke="#0b67c2" strokeWidth="3" />
-        <circle cx="168" cy="90" r="14" fill="#061423" fillOpacity="0.15" stroke="#0b67c2" strokeWidth="3" />
-        <path d="M96 44l30-2" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="76" cy="88" r="13" fill="#07090c" stroke="#ffffff" strokeOpacity="0.22" strokeWidth="2.5" />
+        <circle cx="168" cy="88" r="13" fill="#07090c" stroke="#ffffff" strokeOpacity="0.22" strokeWidth="2.5" />
+        <path d="M30 98h184" stroke="#e5142b" strokeOpacity="0.7" strokeWidth="2" strokeLinecap="round" />
       </svg>
+      <span className="hidden text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-400 @[160px]:block">{t('common.photoSoon')}</span>
     </div>
   );
 }

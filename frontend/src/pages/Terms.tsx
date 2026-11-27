@@ -12,7 +12,7 @@ export default function Terms() {
     <div className="bg-mist-100">
       <PageHeader crumb={t('footer.terms')} title={t('legal.termsTitle')} subtitle={t('legal.termsSub')} />
       <div className="mx-auto max-w-3xl px-5 py-16 lg:px-8">
-        <article className="rounded-3xl border border-line bg-white p-7 shadow-[var(--shadow-soft)] lg:p-10">
+        <article className="rounded-3xl border border-line bg-surface p-7 shadow-[var(--shadow-soft)] lg:p-10">
           <p className="text-[13px] font-semibold uppercase tracking-wide text-ink-400">
             {t('legal.lastUpdated')}: {UPDATED}
           </p>
@@ -69,7 +69,7 @@ export default function Terms() {
           <Section n="8" title="Contact">
             Questions about these terms? Email{' '}
             <a href="mailto:hello@daljirrentalcar.com" className="font-bold text-brand-600 hover:underline">hello@daljirrentalcar.com</a>{' '}
-            or call +252 61 2345678. We may update these terms from time to time; the “last updated” date above always
+            or through our contact page. We may update these terms from time to time; the “last updated” date above always
             reflects the current version.
           </Section>
         </article>

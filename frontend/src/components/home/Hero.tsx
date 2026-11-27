@@ -1,143 +1,120 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Star } from 'lucide-react';
+import { ArrowRight, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ButtonLink } from '../ui/Button';
-import { VehicleImage } from '../VehicleImage';
 import { SearchCard } from './SearchCard';
-import { getVehicleBySlug } from '@/data/vehicles';
-import { useI18n } from '@/context/LocaleContext';
-import { useHeroImage } from '@/lib/branding';
+import { useI18n, useCurrency } from '@/context/LocaleContext';
+import { useBranding, useHeroImage } from '@/lib/branding';
+import { HERO_PHOTO, SPOTLIGHT_SLUG } from '@/lib/bundledPhotos';
+import { useVehicle } from '@/hooks/useVehicles';
+import { ik } from '@/lib/imagekitImages';
 
-const stats = [
-  { value: '150+', labelKey: 'hero.statCars' },
-  { value: '12K+', labelKey: 'hero.statRenters' },
-  { value: '4.9', labelKey: 'hero.statRating' },
-];
-
+/**
+ * Full-bleed photo hero. The photo is the admin-set hero image (Media Library)
+ * when there is one, otherwise the bundled Prado TX shot. A left-to-right dark
+ * gradient keeps the copy readable over any photo.
+ */
 export function Hero() {
   const { t } = useI18n();
-  const hero = getVehicleBySlug('toyota-land-cruiser-2024');
-  // Admin-set hero/banner image (Media Library). Falls back to the Land Cruiser
-  // vehicle image — then the branded placeholder — when none is set.
-  const heroImage = useHeroImage();
+  const { money } = useCurrency();
+  const adminHero = useHeroImage();
+  const { phone } = useBranding();
+  const { vehicle: spotlight } = useVehicle(SPOTLIGHT_SLUG);
 
   return (
-    <section className="relative overflow-hidden bg-[linear-gradient(118deg,#061423_0%,#0d2b50_52%,#0b67c2_128%)]">
-      {/* ambient glows */}
-      <div className="pointer-events-none absolute -right-16 -top-36 size-[560px] rounded-full bg-[radial-gradient(circle,#18a8f5,transparent_66%)] opacity-45 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-52 -left-32 size-[520px] rounded-full bg-[radial-gradient(circle,#f59e0b,transparent_70%)] opacity-20 blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 dotted-grid opacity-50" />
+    <section className="relative isolate overflow-hidden bg-navy-900">
+      <picture>
+        {!adminHero && <source media="(max-width: 640px)" srcSet={HERO_PHOTO.portrait} />}
+        <img
+          src={adminHero?.url ?? HERO_PHOTO.landscape}
+          alt=""
+          aria-hidden
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          className="absolute inset-0 -z-10 h-full w-full object-cover object-[60%_30%] sm:object-[72%_40%]"
+        />
+      </picture>
+      {/* Readability: dark from the left on desktop, from the bottom on phones */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(7,9,12,.25)_0%,rgba(7,9,12,.35)_35%,rgba(7,9,12,.92)_70%,#07090c_100%)] sm:bg-[linear-gradient(90deg,#07090c_0%,rgba(7,9,12,.94)_28%,rgba(7,9,12,.55)_52%,rgba(7,9,12,.08)_75%),linear-gradient(180deg,rgba(7,9,12,.55)_0%,transparent_22%,transparent_58%,#07090c_100%)]"
+      />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(700px_300px_at_80%_78%,rgba(229,20,43,.16),transparent_70%)]" />
 
-      <div className="relative z-10 mx-auto max-w-[1360px] px-5 pt-14 lg:px-8 lg:pt-[70px]">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-11">
-          {/* Copy */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-          >
-            <div className="mb-5 inline-flex items-center gap-2.5 text-[12.5px] font-bold uppercase tracking-[0.18em] text-brand-300">
-              <span className="h-[3px] w-6 rounded-full bg-amber-500" />
-              {t('hero.badge')}
-            </div>
-            <h1 className="font-display text-[46px] font-extrabold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-[70px]">
-              {t('hero.titleTop')}
-              <br />
-              {t('hero.titleMid')} <span className="text-gradient">{t('hero.titleHi')}</span>
-            </h1>
-            <p className="mt-6 max-w-md text-[17px] leading-relaxed text-brand-100/80">
-              {t('hero.subtitle')}
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3.5">
-              <ButtonLink to="/fleet" size="lg">
-                {t('hero.exploreFleet')} <ArrowRight className="size-4" />
-              </ButtonLink>
+      <div className="mx-auto flex min-h-[620px] max-w-[1320px] flex-wrap items-end gap-10 px-4 pt-40 sm:min-h-[600px] sm:items-center sm:px-6 sm:pt-28">
+        <motion.div
+          className="min-w-0 flex-[1_1_460px]"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
+        >
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-brand-600/45 bg-brand-600/10 px-3.5 py-1.5 text-[13px] font-semibold text-brand-300">
+            <span className="size-[7px] rounded-full bg-brand-500" aria-hidden />
+            {t('home.cities')}
+          </div>
+          <h1 className="poster mt-5 text-[46px] text-white sm:text-6xl lg:text-[84px]">
+            {t('hero.titleTop')}
+            <br />
+            {t('hero.titleMid')} <span className="text-brand-600">{t('hero.titleHi')}</span>
+          </h1>
+          <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-ink-700 sm:text-lg">{t('home.heroSub')}</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <ButtonLink to="/fleet" size="lg">
+              {t('hero.exploreFleet')} <ArrowRight className="size-[18px]" aria-hidden />
+            </ButtonLink>
+            {phone ? (
+              <a
+                href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                className="inline-flex min-h-14 items-center gap-2.5 rounded-[14px] border border-white/16 px-6 font-semibold text-white transition-colors hover:bg-white/8"
+              >
+                <Phone className="size-[18px]" aria-hidden /> {phone}
+              </a>
+            ) : (
               <ButtonLink to="/booking" size="lg" variant="outline-light">
                 {t('hero.quickBook')}
               </ButtonLink>
-            </div>
+            )}
+          </div>
+        </motion.div>
 
-            <div className="mt-11 flex flex-wrap gap-8">
-              {stats.map((s, i) => (
-                <div key={s.labelKey} className="flex items-center gap-8">
-                  {i > 0 && <span className="h-9 w-px bg-white/15" />}
-                  <div>
-                    <div className="font-display text-3xl font-extrabold leading-none text-white">
-                      {s.value}
-                    </div>
-                    <div className="mt-1.5 text-[13px] font-semibold text-brand-100/60">
-                      {t(s.labelKey)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Car */}
+        {spotlight && (
           <motion.div
-            className="relative h-[300px] sm:h-[380px] lg:h-[440px]"
-            initial={{ opacity: 0, scale: 0.94, x: 30 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            transition={{ duration: 1, ease: [0.19, 1, 0.22, 1], delay: 0.15 }}
+            className="hidden min-w-0 flex-[1_1_480px] justify-end self-end pb-4 sm:flex"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
           >
-            <div className="absolute inset-0 animate-float">
-              {heroImage ? (
+            <Link
+              to={`/fleet/${spotlight.slug}`}
+              className="glass flex items-center gap-3.5 rounded-2xl py-3 pl-3 pr-5 transition-colors hover:border-brand-600/60"
+            >
+              {spotlight.thumbnail && (
                 <img
-                  src={heroImage.url}
-                  alt={heroImage.alt || 'Daljir Rental Car'}
-                  loading="eager"
-                  decoding="async"
-                  fetchPriority="high"
-                  className="h-full w-full object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-                />
-              ) : (
-                <VehicleImage
-                  filePath={hero?.heroImage?.filePath}
-                  alt={hero?.heroImage?.alt || 'Toyota Land Cruiser 2024'}
-                  preset="hero"
-                  fit="contain"
-                  priority
-                  className="h-full w-full drop-shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
+                  src={ik((spotlight.gallery.find((g) => g.tag === 'interior') ?? spotlight.thumbnail).filePath, 'thumb')}
+                  alt=""
+                  aria-hidden
+                  className="size-16 rounded-xl object-cover"
                 />
               )}
-            </div>
-
-            <motion.div
-              className="glass absolute left-0 top-3 flex items-center gap-2.5 rounded-2xl px-4 py-3"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <Star className="size-5 fill-amber-500 text-amber-500" />
-              <div>
-                <div className="text-base font-extrabold leading-none text-white">4.9</div>
-                <div className="text-[11px] text-brand-100/70">2,140 reviews</div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="glass absolute bottom-14 right-0 rounded-2xl px-5 py-3.5"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.75 }}
-            >
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-100/70">
-                {t('common.from')}
-              </div>
-              <div className="font-display text-[22px] font-extrabold leading-tight text-white">
-                $120<span className="text-[13px] font-semibold text-brand-100/70"> /day</span>
-              </div>
-            </motion.div>
+              <span>
+                <span className="block text-xs uppercase tracking-[0.06em] text-ink-500">
+                  {spotlight.title} · {spotlight.category}
+                </span>
+                <span className="font-display text-[22px] font-bold text-white">
+                  {money(spotlight.pricePerDay)}{' '}
+                  <span className="text-sm font-medium text-ink-400">{t('common.perDay')}</span>
+                </span>
+              </span>
+              <ArrowRight className="ml-1 size-[18px] text-brand-400" aria-hidden />
+            </Link>
           </motion.div>
-        </div>
+        )}
       </div>
 
-      {/* Floating search */}
-      <div className="relative z-20 mx-auto max-w-[1240px] translate-y-12 px-5 lg:px-8">
+      <div className="relative mx-auto max-w-[1320px] px-4 pb-16 pt-10 sm:px-6">
         <SearchCard />
       </div>
-      <div className="h-16" />
     </section>
   );
 }

@@ -11,11 +11,11 @@ export function AuditPanel() {
   }, []);
 
   return (
-    <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+    <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
       <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-navy-700">
         <ScrollText className="size-5 text-brand-600" /> Audit log
       </h3>
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>

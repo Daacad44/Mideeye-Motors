@@ -1,61 +1,72 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Car, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { useI18n } from '@/context/LocaleContext';
+import { LOCATIONS } from '@/lib/locations';
+import { CATEGORIES } from '@/lib/categories';
 
-const fields = [
-  { key: 'pickup', label: 'Pickup Location', placeholder: 'Mogadishu HQ', icon: MapPin },
-  { key: 'dropoff', label: 'Drop-off Location', placeholder: 'Same location', icon: MapPin },
-  { key: 'pickupDate', label: 'Pickup Date', placeholder: '', icon: CalendarDays, type: 'date' },
-  { key: 'returnDate', label: 'Return Date', placeholder: '', icon: CalendarDays, type: 'date' },
-  { key: 'type', label: 'Car Type', placeholder: 'All types', icon: Car },
-] as const;
+const today = () => new Date().toISOString().slice(0, 10);
 
+/** Home search: where + when + what → the fleet page, carrying the trip along. */
 export function SearchCard() {
   const navigate = useNavigate();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const { t } = useI18n();
+  const [pickup, setPickup] = useState<string>(LOCATIONS[0].id);
+  const [pickupDate, setPickupDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [type, setType] = useState('');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams(
-      Object.fromEntries(Object.entries(values).filter(([, v]) => v)),
-    );
+    const params = new URLSearchParams();
+    params.set('pickup', pickup);
+    if (pickupDate) params.set('pickupDate', pickupDate);
+    if (returnDate) params.set('returnDate', returnDate);
+    if (type) params.set('type', type);
     navigate(`/fleet?${params.toString()}`);
   };
+
+  const cell = 'flex min-w-0 flex-col gap-1.5 rounded-[14px] bg-inset px-4 py-2.5 focus-within:ring-2 focus-within:ring-brand-400';
+  const lab = 'text-xs font-semibold uppercase tracking-[0.05em] text-ink-400';
+  const ctl = 'w-full min-w-0 bg-transparent p-0 text-base font-semibold text-white focus:outline-none';
 
   return (
     <form
       onSubmit={submit}
-      className="glass grid grid-cols-1 gap-3 rounded-[20px] p-4 shadow-[0_30px_70px_rgba(4,15,30,.4)] sm:grid-cols-2 lg:grid-cols-[repeat(5,1fr)_auto]"
+      aria-label={t('home.searchLabel')}
+      className="grid grid-cols-1 gap-3 rounded-[22px] border border-white/10 bg-surface/92 p-3.5 shadow-[0_30px_80px_rgba(0,0,0,.5)] backdrop-blur-md sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
     >
-      {fields.map((f) => {
-        const Icon = f.icon;
-        return (
-          <label
-            key={f.key}
-            className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-white/15 bg-white/5 px-3.5 py-3 transition-colors focus-within:border-brand-400"
-          >
-            <Icon className="size-4 shrink-0 text-brand-300" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-semibold text-brand-100/70">
-                {f.label}
-              </span>
-              <input
-                type={'type' in f ? f.type : 'text'}
-                placeholder={f.placeholder}
-                value={values[f.key] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                className="w-full bg-transparent text-sm font-semibold text-white placeholder:text-brand-100/50 focus:outline-none [color-scheme:dark]"
-              />
-            </span>
-          </label>
-        );
-      })}
+      <label className={cell}>
+        <span className={lab}>{t('home.searchWhere')}</span>
+        <select value={pickup} onChange={(e) => setPickup(e.target.value)} className={ctl}>
+          {LOCATIONS.map((l) => (
+            <option key={l.id} value={l.id} className="bg-surface">{t(l.key)}</option>
+          ))}
+        </select>
+      </label>
+      <label className={cell}>
+        <span className={lab}>{t('booking.pickupDate')}</span>
+        <input type="date" min={today()} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={ctl} />
+      </label>
+      <label className={cell}>
+        <span className={lab}>{t('booking.returnDate')}</span>
+        <input type="date" min={pickupDate || today()} value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className={ctl} />
+      </label>
+      <label className={cell}>
+        <span className={lab}>{t('home.searchType')}</span>
+        <select value={type} onChange={(e) => setType(e.target.value)} className={ctl}>
+          <option value="" className="bg-surface">{t('common.all')}</option>
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id} className="bg-surface">{t(c.key)}</option>
+          ))}
+        </select>
+      </label>
       <button
         type="submit"
-        className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-7 py-3.5 text-[15px] font-bold text-white shadow-[var(--shadow-glow-amber)] transition-transform hover:-translate-y-0.5"
+        className="flex min-h-16 items-center justify-center gap-2.5 rounded-[14px] bg-brand-600 px-7 font-bold text-white transition-colors hover:bg-brand-hover sm:col-span-2 lg:col-span-1"
       >
-        <Search className="size-[18px]" />
-        <span className="lg:hidden xl:inline">Search</span>
+        <Search className="size-[18px]" aria-hidden />
+        {t('home.searchCta')}
       </button>
     </form>
   );

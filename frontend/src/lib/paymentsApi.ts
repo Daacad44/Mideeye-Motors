@@ -12,16 +12,20 @@ export interface Payment {
   reference: string | null;
   paidAt: string | null;
   createdAt: string;
+  /** WaafiPay: the wallet number the PIN prompt went to (252…). */
+  payerPhone?: string | null;
+  /** WaafiPay: rejected | insufficient_funds | timeout | invalid_account | error */
+  failureReason?: string | null;
 }
 
-export type PaymentProvider = 'manual' | 'mock';
+export type PaymentProvider = 'waafipay' | 'manual' | 'mock';
 
 export const paymentsApi = {
   /** Payment methods this deployment accepts (`mock` is off in production). */
   providers: () => http<{ data: PaymentProvider[] }>('/payments/providers'),
 
   /** `bookingReference` proves a guest owns the booking. */
-  create: (payload: { bookingId: string; bookingReference: string; provider: PaymentProvider; reference?: string }) =>
+  create: (payload: { bookingId: string; bookingReference: string; provider: PaymentProvider; reference?: string; payerPhone?: string }) =>
     http<{ data: Payment }>('/payments', { method: 'POST', body: JSON.stringify(payload) }),
 
   getForBooking: (bookingId: string, bookingReference: string) =>

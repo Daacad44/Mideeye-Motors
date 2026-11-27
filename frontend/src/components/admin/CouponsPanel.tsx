@@ -19,9 +19,9 @@ const fmtValue = (c: Coupon) => (c.type === 'PERCENT' ? `${c.value}%` : formatCu
 
 function statusOf(c: Coupon): { label: string; cls: string } {
   if (!c.active) return { label: 'Inactive', cls: 'bg-mist-200 text-ink-500' };
-  if (c.expiresAt && new Date(c.expiresAt) < new Date()) return { label: 'Expired', cls: 'bg-red-100 text-red-600' };
-  if (c.maxUses != null && c.usedCount >= c.maxUses) return { label: 'Used up', cls: 'bg-amber-100 text-amber-700' };
-  return { label: 'Active', cls: 'bg-emerald-100 text-emerald-700' };
+  if (c.expiresAt && new Date(c.expiresAt) < new Date()) return { label: 'Expired', cls: 'bg-red-500/15 text-red-400' };
+  if (c.maxUses != null && c.usedCount >= c.maxUses) return { label: 'Used up', cls: 'bg-amber-500/15 text-amber-300' };
+  return { label: 'Active', cls: 'bg-emerald-500/15 text-emerald-400' };
 }
 
 export function CouponsPanel() {
@@ -76,7 +76,7 @@ export function CouponsPanel() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={create} className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+      <form onSubmit={create} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
         <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-navy-700">
           <Ticket className="size-5 text-brand-600" /> Create coupon
         </h3>
@@ -91,13 +91,13 @@ export function CouponsPanel() {
           <input type="date" placeholder="Expires" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} className={inputCls} />
         </div>
         <div className="mt-3 flex justify-end">
-          <button className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-700">Add coupon</button>
+          <button className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover">Add coupon</button>
         </div>
       </form>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
-      <div className="overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-soft)]">
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
@@ -139,7 +139,7 @@ export function CouponsPanel() {
 function IconBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: () => void; title: string; danger?: boolean }) {
   return (
     <button onClick={onClick} title={title} aria-label={title}
-      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-300 hover:bg-red-50' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
+      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-500/50 hover:bg-red-500/10' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
       {children}
     </button>
   );

@@ -21,10 +21,8 @@ function hiDpiSrc(url: string, height: number): string {
 }
 
 /**
- * Renders the OFFICIAL Daljir Rental Car logo PNG (from ImageKit via the branding
- * API). There is intentionally NO text/CSS/SVG recreation — if no logo has been
- * uploaded yet we reserve space with a transparent placeholder at the logo's
- * aspect ratio rather than substituting a fake wordmark.
+ * Renders the OFFICIAL Daljir Rental Car logo (from ImageKit via the branding
+ * API). Until a logo has been uploaded, the design-system wordmark is shown.
  *
  * `variant`:
  *  - `dark`  (default) — no chip; for LIGHT surfaces (the logo's colours read).
@@ -49,7 +47,7 @@ export function Logo({
     <span
       className={cn(
         'inline-flex items-center justify-center',
-        variant === 'light' && 'rounded-lg bg-white/95 px-2 py-1 shadow-sm ring-1 ring-navy-950/5',
+        variant === 'light' && 'rounded-lg bg-navy-950/75 px-2 py-1 shadow-sm ring-1 ring-white/10',
         className,
       )}
       style={{ minHeight: height }}
@@ -67,13 +65,23 @@ export function Logo({
           onError={() => setErrored(true)}
         />
       ) : (
-        // Reserve space at the logo's ratio so layout never shifts on load.
-        <span
-          aria-label="Daljir Rental Car"
-          role="img"
-          style={{ height, width: reservedWidth }}
-          className="inline-block"
-        />
+        // No logo uploaded yet: show the Daljir wordmark from the design system
+        // (red "D" tile + spaced name) so the header is never blank.
+        <span aria-label="Daljir Rental Car" role="img" className="inline-flex items-center gap-2.5" style={{ height }}>
+          <span
+            aria-hidden
+            className="grid place-items-center rounded-[9px] bg-brand-600 font-display font-extrabold text-white"
+            style={{ width: Math.round(height * 0.78), height: Math.round(height * 0.78), fontSize: Math.round(height * 0.44) }}
+          >
+            D
+          </span>
+          <span aria-hidden className="flex flex-col leading-none">
+            <span className="font-display font-extrabold tracking-[0.2em] text-white" style={{ fontSize: Math.round(height * 0.42) }}>
+              DALJIR
+            </span>
+            <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-ink-400">Rental Car</span>
+          </span>
+        </span>
       )}
     </span>
   );

@@ -1,124 +1,88 @@
 import { Link } from 'react-router-dom';
-import { Heart, Users, Gauge, Fuel, Star, ArrowRight, GitCompareArrows } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 import type { Vehicle } from '@/types/vehicle';
 import { VehicleImage } from './VehicleImage';
 import { useCurrency, useI18n } from '@/context/LocaleContext';
+import { categoryKey } from '@/lib/categories';
+import { locationKey } from '@/lib/locations';
 
-export function VehicleCard({ vehicle, index = 0 }: { vehicle: Vehicle; index?: number }) {
-  const [fav, setFav] = useState(false);
+/**
+ * Fleet card: dark stage with a red glow under the car, category + status
+ * pills, three spec chips, price and one action. `tripQuery` carries the
+ * search (location/dates) through to the details and booking pages.
+ */
+export function VehicleCard({
+  vehicle: v,
+  index = 0,
+  tripQuery = '',
+}: {
+  vehicle: Vehicle;
+  index?: number;
+  tripQuery?: string;
+}) {
   const { money } = useCurrency();
   const { t } = useI18n();
+  const href = `/fleet/${v.slug}${tripQuery ? `?${tripQuery}` : ''}`;
+  const photo = v.coverImage ?? v.thumbnail ?? v.heroImage;
+  const loc = locationKey(v.location);
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1], delay: (index % 4) * 0.07 }}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-soft)] transition-all duration-500 hover:-translate-y-1.5 hover:border-brand-400/50 hover:shadow-[var(--shadow-lift)]"
+      transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1], delay: (index % 4) * 0.06 }}
+      className="group relative flex flex-col overflow-hidden rounded-[22px] border border-white/8 bg-surface transition-[transform,border-color] duration-200 hover:-translate-y-1 hover:border-brand-600/55 motion-reduce:hover:translate-y-0"
     >
-      {/* Media */}
-      <div className="relative bg-gradient-to-b from-mist-200 to-white p-4 pb-0">
-        <div className="absolute left-4 top-4 z-10 flex gap-2">
-          {vehicle.featured && (
-            <span className="rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-md">
-              Featured
-            </span>
-          )}
-          <span className="rounded-full bg-navy-900/85 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">
-            {vehicle.category}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setFav((v) => !v)}
-          aria-label="Save to favourites"
-          aria-pressed={fav}
-          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white/90 text-navy-700 shadow-md backdrop-blur transition-colors hover:text-amber-500"
+      <div className="relative bg-[radial-gradient(240px_120px_at_50%_80%,rgba(229,20,43,.18),transparent_70%),#11161d] px-4 pb-1.5 pt-7">
+        <span className="absolute left-3 top-3 z-10 rounded-lg border border-white/10 bg-navy-900/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-white">
+          {t(categoryKey(v.category) ?? v.category)}
+        </span>
+        <span
+          className={
+            'absolute right-3 top-3 z-10 rounded-lg px-2.5 py-1 text-[11px] font-bold ' +
+            (v.availability ? 'bg-emerald-500/16 text-emerald-400' : 'bg-amber-500/16 text-amber-400')
+          }
         >
-          <Heart className={fav ? 'size-5 fill-amber-500 text-amber-500' : 'size-5'} />
-        </button>
-
-        <Link to={`/fleet/${vehicle.slug}`}>
+          {v.availability ? t('fleet.available') : t('fleet.rented')}
+        </span>
+        <Link to={href} tabIndex={-1} aria-hidden>
           <VehicleImage
-            filePath={vehicle.coverImage?.filePath}
-            alt={vehicle.coverImage?.alt || vehicle.title}
+            filePath={photo?.filePath}
+            alt={photo?.alt || v.title}
             preset="card"
             fit="contain"
-            className="aspect-[16/10] w-full transition-transform duration-700 group-hover:scale-[1.04]"
+            className="aspect-[1200/420] w-full"
+            imgClassName="mix-blend-lighten"
             sizes="(max-width: 640px) 90vw, 320px"
           />
         </Link>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col p-5">
-        <div className="mb-1 flex items-start justify-between gap-2">
+      <div className="flex flex-1 flex-col gap-3 px-[18px] pb-[18px] pt-4">
+        <div>
+          <h3 className="font-display text-[19px] font-bold text-white">
+            <Link to={href} className="after:absolute after:inset-0 hover:text-white focus-visible:outline-none">
+              {v.title}
+            </Link>
+          </h3>
+          <p className="text-[13px] text-ink-400">{loc ? t(loc) : v.location}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 text-center text-xs text-ink-500">
+          <span className="rounded-lg bg-elevated px-1 py-[7px]">{v.seats} {t('fleet.seatsShort')}</span>
+          <span className="rounded-lg bg-elevated px-1 py-[7px]">{t(`values.${v.transmission}`)}</span>
+          <span className="rounded-lg bg-elevated px-1 py-[7px]">{t(`values.${v.fuelType}`)}</span>
+        </div>
+        <div className="mt-auto flex items-center justify-between border-t border-white/7 pt-3">
           <div>
-            <h3 className="font-display text-[17px] font-bold text-navy-700">
-              <Link to={`/fleet/${vehicle.slug}`} className="hover:text-brand-600">
-                {vehicle.title}
-              </Link>
-            </h3>
-            <p className="text-[13px] text-ink-400">{vehicle.brand} · {vehicle.year}</p>
+            <span className="font-display text-2xl font-extrabold tabular-nums text-white">{money(v.pricePerDay)}</span>
+            <span className="text-[13px] text-ink-400"> {t('common.perDay')}</span>
           </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-lg bg-brand-100 px-2 py-1 text-[13px] font-bold text-brand-600">
-            <Star className="size-3.5 fill-amber-500 text-amber-500" />
-            {vehicle.rating}
-          </div>
-        </div>
-
-        {/* Specs */}
-        <div className="my-4 grid grid-cols-3 gap-2 border-y border-line py-3 text-[12.5px] text-ink-500">
-          <Spec icon={<Users className="size-4" />} label={`${vehicle.seats} ${t('fleet.seats')}`} />
-          <Spec icon={<Gauge className="size-4" />} label={vehicle.transmission} />
-          <Spec icon={<Fuel className="size-4" />} label={vehicle.fuelType} />
-        </div>
-
-        {/* Price + actions */}
-        <div className="mt-auto flex items-end justify-between">
-          <div>
-            <span className="font-display text-2xl font-extrabold text-navy-700">
-              {money(vehicle.pricePerDay)}
-            </span>
-            <span className="text-[13px] font-medium text-ink-400"> {t('common.perDay')}</span>
-          </div>
-          <button
-            type="button"
-            aria-label="Add to compare"
-            className="grid size-10 place-items-center rounded-xl border border-line text-ink-400 transition-colors hover:border-brand-400 hover:text-brand-600"
-          >
-            <GitCompareArrows className="size-4" />
-          </button>
-        </div>
-
-        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Link
-            to={`/booking?vehicle=${vehicle.slug}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-navy-700"
-          >
-            {t('common.bookNow')} <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            to={`/fleet/${vehicle.slug}`}
-            className="inline-flex items-center justify-center rounded-xl border border-line px-4 py-3 text-sm font-bold text-navy-700 transition-colors hover:border-brand-400 hover:text-brand-600"
-          >
+          <span className="relative z-10 inline-flex min-h-10 items-center rounded-xl bg-brand-600 px-4 text-sm font-bold text-white transition-colors group-hover:bg-brand-hover">
             {t('common.view')}
-          </Link>
+          </span>
         </div>
       </div>
     </motion.article>
-  );
-}
-
-function Spec({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-1 text-center">
-      <span className="text-brand-500">{icon}</span>
-      <span className="font-medium">{label}</span>
-    </div>
   );
 }

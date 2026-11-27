@@ -302,12 +302,15 @@ model Payment {
   booking    Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   bookingId  String
 
-  provider   String        // 'manual' | 'mock' | <future gateway>
+  provider   String        // 'waafipay' | 'manual' | 'mock'
   amount     Int
   currency   String        @default("USD")
   status     PaymentStatus @default(PENDING)
   reference  String?       // customer-supplied (EVC/Zaad txn id) or gateway ref
   paidAt     DateTime?
+
+  payerPhone    String?    // WaafiPay: wallet number the push request went to (252…)
+  failureReason String?    // WaafiPay: rejected | insufficient_funds | timeout | invalid_account | error
 
   createdAt  DateTime      @default(now())
 

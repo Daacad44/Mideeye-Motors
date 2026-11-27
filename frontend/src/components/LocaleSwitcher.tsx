@@ -13,7 +13,7 @@ export function LocaleSwitcher({ variant = 'dark' }: { variant?: 'light' | 'dark
   const { locale, setLocale, t } = useI18n();
   const { currency, setCurrency } = useCurrency();
 
-  const wrap = variant === 'light' ? 'border-white/15 bg-white/5' : 'border-line bg-white';
+  const wrap = variant === 'light' ? 'border-white/15 bg-white/5' : 'border-line bg-surface';
   const idle = variant === 'light' ? 'text-brand-100/70 hover:text-white' : 'text-ink-500 hover:text-navy-700';
   const activeCls = 'bg-brand-600 text-white';
 

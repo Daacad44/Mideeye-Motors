@@ -6,10 +6,10 @@ import { useAuth } from '@/context/AuthContext';
 
 const ROLES: Role[] = ['ADMIN', 'MANAGER', 'STAFF', 'CUSTOMER'];
 const roleBadge: Record<Role, string> = {
-  SUPER_ADMIN: 'bg-amber-100 text-amber-700',
-  ADMIN: 'bg-brand-100 text-brand-700',
-  MANAGER: 'bg-indigo-100 text-indigo-700',
-  STAFF: 'bg-emerald-100 text-emerald-700',
+  SUPER_ADMIN: 'bg-amber-500/15 text-amber-300',
+  ADMIN: 'bg-brand-600/12 text-brand-700',
+  MANAGER: 'bg-indigo-500/15 text-indigo-300',
+  STAFF: 'bg-emerald-500/15 text-emerald-400',
   CUSTOMER: 'bg-mist-200 text-ink-500',
 };
 
@@ -41,7 +41,7 @@ export function UsersPanel() {
   return (
     <div className="space-y-6">
       {isSuper && (
-        <form onSubmit={create} className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+        <form onSubmit={create} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
           <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-navy-700">
             <UserPlus className="size-5 text-brand-600" /> Create team member
           </h3>
@@ -57,15 +57,15 @@ export function UsersPanel() {
                 className="flex-1 rounded-xl border border-line px-3 py-2.5 text-sm font-bold text-navy-700 focus:outline-none">
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <button className="rounded-xl bg-brand-600 px-4 text-sm font-bold text-white hover:bg-navy-700">Add</button>
+              <button className="rounded-xl bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-hover">Add</button>
             </div>
           </div>
         </form>
       )}
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
-      <div className="overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-soft)]">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
@@ -93,7 +93,7 @@ export function UsersPanel() {
                     )}
                   </td>
                   <td className="p-4">
-                    <span className={'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-bold ' + (u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+                    <span className={'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12px] font-bold ' + (u.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
                       {u.status === 'ACTIVE' ? <CheckCircle2 className="size-3.5" /> : <Ban className="size-3.5" />} {u.status}
                     </span>
                   </td>
@@ -132,7 +132,7 @@ export function UsersPanel() {
 function IconBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: () => void; title: string; danger?: boolean }) {
   return (
     <button onClick={onClick} title={title} aria-label={title}
-      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-300 hover:bg-red-50' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
+      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-500/50 hover:bg-red-500/10' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
       {children}
     </button>
   );

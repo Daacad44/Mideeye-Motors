@@ -1,41 +1,32 @@
 import { Link } from 'react-router-dom';
-import { Car, Truck, Zap, Crown, Bus, CarFront } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from '../ui/SectionHeading';
-
-const categories = [
-  { name: 'SUV', icon: Car, count: 2 },
-  { name: 'Sedan', icon: CarFront, count: 2 },
-  { name: 'Luxury', icon: Crown, count: 2 },
-  { name: 'Pickup', icon: Truck, count: 1 },
-  { name: 'Electric', icon: Zap, count: 1 },
-  { name: 'Van', icon: Bus, count: 1 },
-];
+import { useI18n } from '@/context/LocaleContext';
+import { CATEGORIES } from '@/lib/categories';
 
 export function Categories() {
+  const { t } = useI18n();
   return (
-    <section className="mx-auto max-w-[1360px] px-5 py-20 lg:px-8 lg:py-24">
-      <div className="mb-10 flex justify-center">
-        <SectionHeading
-          eyebrow="Browse by Type"
-          title="Find your"
-          highlight="perfect ride"
-          align="center"
-          eyebrowColor="brand"
-        />
+    <section className="mx-auto max-w-[1320px] px-4 pt-20 sm:px-6 lg:pt-24">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <SectionHeading eyebrow={t('home.catEyebrow')} title={t('home.catTitle')} />
+        <Link to="/fleet" className="inline-flex items-center gap-2 font-semibold text-ink-700 hover:text-white">
+          {t('home.seeAll')} <ArrowRight className="size-4" aria-hidden />
+        </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {categories.map((c, i) => (
-          <Reveal key={c.name} index={i}>
+      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
+        {CATEGORIES.map((c, i) => (
+          <Reveal key={c.id} index={i}>
             <Link
-              to={`/fleet?type=${c.name}`}
-              className="group flex flex-col items-center gap-3 rounded-3xl border border-line bg-white px-4 py-7 text-center shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-400 hover:shadow-[var(--shadow-lift)]"
+              to={`/fleet?type=${c.id}`}
+              className="group flex h-full flex-col gap-3 rounded-[18px] border border-white/8 bg-surface p-5 transition-colors hover:border-brand-600/60 hover:bg-[#131821]"
             >
-              <span className="grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
-                <c.icon className="size-7" />
+              <span className="grid size-11 place-items-center rounded-xl bg-brand-600/12 text-brand-400">
+                <c.icon className="size-[22px]" aria-hidden />
               </span>
-              <span className="font-display font-bold text-navy-700">{c.name}</span>
-              <span className="text-[12.5px] text-ink-400">{c.count} vehicles</span>
+              <span className="font-display text-lg font-bold text-white">{t(c.key)}</span>
+              <span className="text-[13px] text-ink-400">{t(c.hint)}</span>
             </Link>
           </Reveal>
         ))}

@@ -8,11 +8,11 @@ import { useAuth } from '@/context/AuthContext';
 import { bookingsApi, type Booking, type BookingStatus } from '@/lib/bookingsApi';
 
 const statusBadge: Record<BookingStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-brand-100 text-brand-600',
-  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  PENDING: 'bg-amber-500/15 text-amber-300',
+  CONFIRMED: 'bg-blue-500/15 text-blue-300',
+  ACTIVE: 'bg-emerald-500/15 text-emerald-400',
   COMPLETED: 'bg-mist-200 text-ink-500',
-  CANCELLED: 'bg-red-100 text-red-600',
+  CANCELLED: 'bg-red-500/15 text-red-400',
 };
 
 const label: Record<BookingStatus, string> = {
@@ -63,8 +63,8 @@ export default function Dashboard() {
   if (!user) {
     return (
       <div className="grid min-h-screen place-items-center bg-mist-100 px-5 text-center">
-        <div className="max-w-md rounded-3xl border border-line bg-white p-10 shadow-[var(--shadow-soft)]">
-          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600"><Lock className="size-7" /></span>
+        <div className="max-w-md rounded-3xl border border-line bg-surface p-10 shadow-[var(--shadow-soft)]">
+          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-600/12 text-brand-600"><Lock className="size-7" /></span>
           <h1 className="mt-5 font-display text-2xl font-extrabold text-navy-700">Sign in to see your bookings</h1>
           <p className="mt-2 text-ink-500">Your rentals, trip history and spending live here once you’re signed in.</p>
           <ButtonLink to="/login" variant="secondary" className="mt-6">Sign in</ButtonLink>
@@ -96,7 +96,7 @@ export default function Dashboard() {
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+            <div key={s.label} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
               <s.icon className="size-6 text-brand-500" />
               <div className="mt-4 font-display text-3xl font-extrabold text-navy-700">{s.value}</div>
               <div className="text-[13.5px] text-ink-400">{s.label}</div>
@@ -104,13 +104,13 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="mt-8 rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+        <div className="mt-8 rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-navy-700">My bookings</h2>
             <Link to="/fleet" className="text-sm font-bold text-brand-600 hover:underline">Book another</Link>
           </div>
 
-          {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+          {error && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
           {loading ? (
             <div className="grid place-items-center py-14">

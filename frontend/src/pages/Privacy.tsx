@@ -12,7 +12,7 @@ export default function Privacy() {
     <div className="bg-mist-100">
       <PageHeader crumb={t('footer.privacy')} title={t('legal.privacyTitle')} subtitle={t('legal.privacySub')} />
       <div className="mx-auto max-w-3xl px-5 py-16 lg:px-8">
-        <article className="rounded-3xl border border-line bg-white p-7 shadow-[var(--shadow-soft)] lg:p-10">
+        <article className="rounded-3xl border border-line bg-surface p-7 shadow-[var(--shadow-soft)] lg:p-10">
           <p className="text-[13px] font-semibold uppercase tracking-wide text-ink-400">
             {t('legal.lastUpdated')}: {UPDATED}
           </p>
@@ -54,7 +54,7 @@ export default function Privacy() {
           <Section title="Contact">
             For any privacy question or request, email{' '}
             <a href="mailto:hello@daljirrentalcar.com" className="font-bold text-brand-600 hover:underline">hello@daljirrentalcar.com</a>{' '}
-            or call +252 61 2345678.
+            or through our contact page.
           </Section>
         </article>
       </div>

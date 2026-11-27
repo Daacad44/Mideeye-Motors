@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
-
-const info = [
-  { icon: Phone, label: 'Phone', value: '+252 61 2345678' },
-  { icon: Mail, label: 'Email', value: 'hello@daljirrentalcar.com' },
-  { icon: MapPin, label: 'Address', value: 'Maka Al-Mukarama Rd, Mogadishu' },
-  { icon: Clock, label: 'Hours', value: 'Open 24/7' },
-];
+import { useBranding } from '@/lib/branding';
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
-  const field = 'w-full rounded-xl border border-line bg-white px-4 py-3 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+  const { phone, email } = useBranding();
+  // Phone comes from Admin → Branding; the row is hidden until it is set.
+  const info = [
+    ...(phone ? [{ icon: Phone, label: 'Phone', value: phone }] : []),
+    { icon: Mail, label: 'Email', value: email || 'hello@daljirrentalcar.com' },
+    { icon: MapPin, label: 'Address', value: 'Maka Al-Mukarama Rd, Mogadishu' },
+    { icon: Clock, label: 'Hours', value: 'Open 24/7' },
+  ];
+  const field = 'w-full rounded-xl border border-line bg-surface px-4 py-3 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
   const label = 'mb-1.5 block text-[13px] font-bold text-navy-700';
 
   return (
@@ -22,8 +24,8 @@ export default function Contact() {
         <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
           <div className="space-y-4">
             {info.map((it) => (
-              <div key={it.label} className="flex items-center gap-4 rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-soft)]">
-                <span className="grid size-12 place-items-center rounded-xl bg-brand-100 text-brand-600">
+              <div key={it.label} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-soft)]">
+                <span className="grid size-12 place-items-center rounded-xl bg-brand-600/12 text-brand-600">
                   <it.icon className="size-5" />
                 </span>
                 <div>
@@ -44,7 +46,7 @@ export default function Contact() {
 
           <form
             onSubmit={(e) => { e.preventDefault(); setSent(true); }}
-            className="rounded-3xl border border-line bg-white p-8 shadow-[var(--shadow-soft)]"
+            className="rounded-3xl border border-line bg-surface p-8 shadow-[var(--shadow-soft)]"
           >
             {sent ? (
               <div className="grid h-full place-items-center py-16 text-center">

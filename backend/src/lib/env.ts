@@ -45,6 +45,14 @@ const schema = z.object({
   // It is always off in production unless this is explicitly set to "true"
   // (e.g. a staging server); in development it is on by default.
   PAYMENTS_ALLOW_MOCK: z.enum(['true', 'false']).optional(),
+
+  // ── WaafiPay (EVC Plus, ZAAD, SAHAL, WAAFI push-to-phone). All three
+  // credentials come from the WaafiPay merchant portal; unset ⇒ disabled. ──
+  WAAFIPAY_MERCHANT_UID: z.string().optional().default(''),
+  WAAFIPAY_API_USER_ID: z.string().optional().default(''),
+  WAAFIPAY_API_KEY: z.string().optional().default(''),
+  // Production by default; point at the sandbox while testing.
+  WAAFIPAY_API_URL: z.string().url().default('https://api.waafipay.net/asm'),
 });
 
 // Treat `FOO=""` (common in .env files and compose `${FOO:-}`) as unset so
@@ -123,5 +131,12 @@ export const env = {
     allowMock:
       data.PAYMENTS_ALLOW_MOCK === 'true' ||
       (data.PAYMENTS_ALLOW_MOCK === undefined && data.NODE_ENV !== 'production'),
+    waafipay: {
+      merchantUid: data.WAAFIPAY_MERCHANT_UID,
+      apiUserId: data.WAAFIPAY_API_USER_ID,
+      apiKey: data.WAAFIPAY_API_KEY,
+      apiUrl: data.WAAFIPAY_API_URL,
+      configured: Boolean(data.WAAFIPAY_MERCHANT_UID && data.WAAFIPAY_API_USER_ID && data.WAAFIPAY_API_KEY),
+    },
   },
 };

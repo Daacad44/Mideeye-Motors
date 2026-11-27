@@ -7,6 +7,7 @@ import { audit } from '../lib/audit.js';
 import { authenticate, optionalAuthenticate, requireStaff, ROLE_RANK, type AuthPayload } from '../middleware/auth.js';
 import { notifyBookingConfirmed } from '../lib/notify.js';
 import { env } from '../lib/env.js';
+import { normalizeSomaliMsisdn, waafiPurchase } from '../lib/waafipay.js';
 
 export const paymentsRouter = Router();
 
@@ -62,11 +63,46 @@ async function confirmBookingOnPayment(bookingId: string) {
   });
 }
 
-type Provider = keyof typeof drivers;
+type Provider = keyof typeof drivers | 'waafipay';
 
-/** Providers this deployment accepts. `mock` only when explicitly allowed. */
-export function enabledProviders(allowMock = env.payments.allowMock): Provider[] {
-  return allowMock ? ['manual', 'mock'] : ['manual'];
+/**
+ * Providers this deployment accepts, in the order the checkout offers them.
+ * WaafiPay only once its merchant credentials are set; `mock` only when
+ * explicitly allowed.
+ */
+export function enabledProviders(
+  allowMock = env.payments.allowMock,
+  waafipay = env.payments.waafipay.configured,
+): Provider[] {
+  return [...(waafipay ? (['waafipay'] as const) : []), 'manual', ...(allowMock ? (['mock'] as const) : [])];
+}
+
+/** A WaafiPay push that has had no answer for this long is treated as timed out. */
+export const WAAFI_STALE_MS = 3 * 60_000;
+
+/**
+ * Run the WaafiPay push in the background and settle the payment row with the
+ * outcome. The customer's page polls GET /payments/booking/:id meanwhile.
+ */
+async function settleWaafiPayment(paymentId: string, booking: { id: string; reference: string; total: number; vehicleTitle: string }, msisdn: string) {
+  const result = await waafiPurchase(env.payments.waafipay, {
+    msisdn,
+    amount: booking.total,
+    referenceId: paymentId,
+    invoiceId: booking.reference,
+    description: `Daljir Rental Car ${booking.reference} - ${booking.vehicleTitle}`,
+  });
+
+  // Only settle a payment that is still waiting (an admin may have acted).
+  const { count } = await prisma.payment.updateMany({
+    where: { id: paymentId, status: 'PENDING' },
+    data: result.ok
+      ? { status: 'PAID', paidAt: new Date(), reference: result.transactionId || null, failureReason: null }
+      : { status: 'FAILED', failureReason: result.reason },
+  });
+  if (!count) return;
+  if (result.ok) await confirmBookingOnPayment(booking.id);
+  else console.warn(`[waafipay] payment ${paymentId} failed: ${result.reason} — ${result.message}`);
 }
 
 /**
@@ -95,8 +131,10 @@ paymentsRouter.get('/providers', (_req, res) => {
 const createSchema = z.object({
   bookingId: z.string().min(1),
   bookingReference: z.string().min(1).optional(),
-  provider: z.enum(['manual', 'mock']),
+  provider: z.enum(['waafipay', 'manual', 'mock']),
   reference: z.string().trim().min(4).max(64).optional(),
+  /** WaafiPay: the wallet number that receives the PIN prompt. */
+  payerPhone: z.string().trim().min(6).max(24).optional(),
 });
 
 // POST /api/payments — start a payment for a booking. Amount comes from the
@@ -105,7 +143,7 @@ const createSchema = z.object({
 paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { bookingId, bookingReference, provider, reference } = parsed.data;
+  const { bookingId, bookingReference, provider, reference, payerPhone } = parsed.data;
 
   if (!enabledProviders().includes(provider)) {
     return res.status(400).json({ error: 'This payment method is not available.' });
@@ -113,10 +151,21 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
   if (provider === 'manual' && !reference) {
     return res.status(400).json({ error: 'Enter the transaction reference from your mobile-money payment.' });
   }
+  const msisdn = provider === 'waafipay' ? normalizeSomaliMsisdn(payerPhone ?? '') : null;
+  if (provider === 'waafipay' && !msisdn) {
+    return res.status(400).json({ error: 'Enter a valid Somali mobile number (e.g. 61 234 5678).' });
+  }
+
+  // A WaafiPay push nobody answered (e.g. the server restarted mid-request)
+  // must not block the customer from trying again.
+  await prisma.payment.updateMany({
+    where: { bookingId, provider: 'waafipay', status: 'PENDING', createdAt: { lt: new Date(Date.now() - WAAFI_STALE_MS) } },
+    data: { status: 'FAILED', failureReason: 'timeout' },
+  });
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    include: { payments: { select: { status: true } } },
+    include: { payments: { select: { status: true } }, vehicle: { select: { title: true } } },
   });
   // Same 404 for "missing" and "not yours" so ids can't be probed.
   if (!booking || !canAccessBooking(booking, req.user, bookingReference)) {
@@ -132,7 +181,20 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
     return res.status(409).json({ error: 'A payment for this booking is already awaiting verification.' });
   }
 
-  const init = await drivers[provider].init({ amount: booking.total, reference });
+  if (provider === 'waafipay') {
+    const payment = await prisma.payment.create({
+      data: { bookingId, provider, amount: booking.total, currency: 'USD', status: 'PENDING', payerPhone: msisdn },
+    });
+    res.status(201).json({ data: payment });
+    void settleWaafiPayment(
+      payment.id,
+      { id: booking.id, reference: booking.reference, total: booking.total, vehicleTitle: booking.vehicle.title },
+      msisdn!,
+    ).catch((e) => console.error('[waafipay] settle failed', e));
+    return;
+  }
+
+  const init = await drivers[provider as keyof typeof drivers].init({ amount: booking.total, reference });
 
   const payment = await prisma.payment.create({
     data: {

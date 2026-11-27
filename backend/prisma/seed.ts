@@ -82,6 +82,14 @@ type Seed = {
 
 const data: Seed[] = [
   {
+    title: 'Toyota Prado TX', slug: 'toyota-prado-tx', category: 'SUV', brand: 'Toyota', year: 2023,
+    pricePerDay: 100, pricePerWeek: 640, pricePerMonth: 2450, transmission: 'Automatic', fuelType: 'Diesel',
+    engine: '2.8L Turbo Diesel', horsePower: 201, seats: 7, doors: 5, color: 'Pearl White', location: 'Mogadishu HQ',
+    rating: 4.9, reviews: 0, featured: true,
+    description: 'The family and long-distance favourite. Seven seats, full-time 4WD and a calm, comfortable cabin — delivered clean, insured and ready for any road in Somalia.',
+    features: ['Full-time 4WD', 'Leather seats', '7 seats (3 rows)', 'Rear camera', 'Rear-row air conditioning', 'Bluetooth & USB', 'Cruise control', 'Full-size spare wheel'],
+  },
+  {
     title: 'Toyota Land Cruiser 2024', slug: 'toyota-land-cruiser-2024', category: 'SUV', brand: 'Toyota', year: 2024,
     pricePerDay: 120, pricePerWeek: 760, pricePerMonth: 2900, transmission: 'Automatic', fuelType: 'Diesel',
     engine: '3.3L V6 Twin-Turbo', horsePower: 305, seats: 7, doors: 5, color: 'Onyx Black', location: 'Mogadishu HQ',
