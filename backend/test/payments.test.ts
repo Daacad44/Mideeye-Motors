@@ -27,12 +27,13 @@ describe('canAccessBooking', () => {
 });
 
 describe('enabledProviders', () => {
-  it('hides the mock provider unless it is allowed', () => {
-    expect(enabledProviders(false, false)).toEqual(['manual']);
-    expect(enabledProviders(true, false)).toEqual(['manual', 'mock']);
+  it('never offers customers a manual reference payment', () => {
+    expect(enabledProviders(false, false)).toEqual([]);
+    expect(enabledProviders(false, true)).toEqual(['waafipay']);
   });
 
-  it('offers WaafiPay first once it is configured', () => {
-    expect(enabledProviders(false, true)).toEqual(['waafipay', 'manual']);
+  it('hides the mock provider unless it is allowed', () => {
+    expect(enabledProviders(true, false)).toEqual(['mock']);
+    expect(enabledProviders(true, true)).toEqual(['waafipay', 'mock']);
   });
 });

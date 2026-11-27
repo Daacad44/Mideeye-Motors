@@ -49,9 +49,17 @@ export function addOnsPerDay(extras: string[], insurance: string) {
   };
 }
 
+/** Round a USD amount to cents. Prices may have cents (e.g. a $0.10 test rate). */
+export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/** Rental subtotal: (daily rate + add-ons) × days, in cents precision. */
+export function rentalSubtotal(pricePerDay: number, addOnsPerDayTotal: number, days: number) {
+  return round2((pricePerDay + addOnsPerDayTotal) * days);
+}
+
 /** Subtotal, tax and total for a rental, after an already-validated discount. */
 export function totals(subtotal: number, discount: number) {
-  const discountedSubtotal = Math.max(0, subtotal - discount);
-  const tax = Math.round(discountedSubtotal * TAX_RATE);
-  return { tax, total: discountedSubtotal + tax };
+  const discountedSubtotal = round2(Math.max(0, subtotal - discount));
+  const tax = round2(discountedSubtotal * TAX_RATE);
+  return { tax, total: round2(discountedSubtotal + tax) };
 }

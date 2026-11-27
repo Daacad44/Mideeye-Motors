@@ -226,15 +226,23 @@ vehiclesRouter.post('/:slug/reviews', authenticate, async (req, res) => {
   res.status(201).json({ data: serializeReview(review) });
 });
 
+/** A USD price: positive, at most two decimals (cents), e.g. 0.1 for a test rate. */
+const money = z
+  .number()
+  .positive()
+  .max(1_000_000)
+  .transform((n) => Math.round(n * 100) / 100)
+  .refine((n) => n > 0, 'Price must be at least $0.01');
+
 // POST /api/vehicles (admin) — create a vehicle with an auto-generated unique slug.
 const createSchema = z.object({
   title: z.string().min(1),
   category: z.nativeEnum(Category),
   brand: z.string().min(1),
   year: z.number().int().min(1900).max(2100),
-  pricePerDay: z.number().int().positive(),
-  pricePerWeek: z.number().int().positive(),
-  pricePerMonth: z.number().int().positive(),
+  pricePerDay: money,
+  pricePerWeek: money,
+  pricePerMonth: money,
   transmission: z.nativeEnum(Transmission),
   fuelType: z.nativeEnum(FuelType),
   engine: z.string().min(1),
@@ -267,9 +275,9 @@ const updateSchema = z.object({
   category: z.nativeEnum(Category).optional(),
   brand: z.string().min(1).optional(),
   year: z.number().int().min(1900).max(2100).optional(),
-  pricePerDay: z.number().int().positive().optional(),
-  pricePerWeek: z.number().int().positive().optional(),
-  pricePerMonth: z.number().int().positive().optional(),
+  pricePerDay: money.optional(),
+  pricePerWeek: money.optional(),
+  pricePerMonth: money.optional(),
   transmission: z.nativeEnum(Transmission).optional(),
   fuelType: z.nativeEnum(FuelType).optional(),
   engine: z.string().min(1).optional(),

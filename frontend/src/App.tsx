@@ -7,6 +7,7 @@ import { ScrollToTop } from '@/components/ScrollToTop';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 import Home from '@/pages/Home';
+import { MobileTabBar } from '@/components/MobileTabBar';
 const Fleet = lazy(() => import('@/pages/Fleet'));
 const VehicleDetails = lazy(() => import('@/pages/VehicleDetails'));
 const Booking = lazy(() => import('@/pages/Booking'));
@@ -71,6 +72,7 @@ export default function App() {
       </div>
 
       {!bare && <Footer />}
+      {!bare && location.pathname !== '/booking' && <MobileTabBar />}
     </div>
   );
 }

@@ -247,7 +247,7 @@ function Kpi({ icon: Icon, label, value, delta }: { icon: React.ElementType; lab
   const up = delta != null && delta > 0;
   const flat = delta === 0;
   return (
-    <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
+    <div className="rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] sm:rounded-3xl sm:p-6">
       <div className="flex items-center justify-between">
         <Icon className="size-6 text-brand-500" />
         {delta != null && (
@@ -256,7 +256,7 @@ function Kpi({ icon: Icon, label, value, delta }: { icon: React.ElementType; lab
           </span>
         )}
       </div>
-      <div className="mt-3 font-display text-3xl font-extrabold text-navy-700">{value}</div>
+      <div className="mt-3 font-display text-2xl font-extrabold text-navy-700 sm:text-3xl">{value}</div>
       <div className="text-[13px] text-ink-400">{label}</div>
     </div>
   );

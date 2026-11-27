@@ -24,7 +24,7 @@ function parseGranularity(raw: unknown): Granularity {
 export async function getRevenueTimeseries(from: Date, to: Date, granularity: Granularity) {
   const [revenueRows, bookingRows] = await Promise.all([
     prisma.$queryRaw<Array<{ period: string; revenue: number }>>`
-      SELECT to_char(date_trunc(${granularity}, "paidAt"), 'YYYY-MM-DD') AS period, COALESCE(SUM(amount), 0)::int AS revenue
+      SELECT to_char(date_trunc(${granularity}, "paidAt"), 'YYYY-MM-DD') AS period, ROUND(COALESCE(SUM(amount), 0)::numeric, 2)::float8 AS revenue
       FROM "Payment"
       WHERE status = 'PAID' AND "paidAt" >= ${from} AND "paidAt" <= ${to}
       GROUP BY 1 ORDER BY 1
@@ -81,7 +81,7 @@ async function computeKpis(from: Date, to: Date) {
     activeBookings,
     completedBookings,
     cancelledCount,
-    avgBookingValue: avgAgg._avg.total ? Math.round(avgAgg._avg.total) : 0,
+    avgBookingValue: avgAgg._avg.total ? Math.round(avgAgg._avg.total * 100) / 100 : 0,
     occupancyRate,
     newCustomers,
   };
@@ -139,7 +139,7 @@ analyticsRouter.get('/top-vehicles', async (req, res) => {
 
   const [byRevenue, byBookings] = await Promise.all([
     prisma.$queryRaw<Array<{ vehicleId: string; title: string; revenue: number; bookings: number }>>`
-      SELECT b."vehicleId" AS "vehicleId", v.title AS title, COALESCE(SUM(p.amount), 0)::int AS revenue, COUNT(DISTINCT b.id)::int AS bookings
+      SELECT b."vehicleId" AS "vehicleId", v.title AS title, ROUND(COALESCE(SUM(p.amount), 0)::numeric, 2)::float8 AS revenue, COUNT(DISTINCT b.id)::int AS bookings
       FROM "Payment" p
       JOIN "Booking" b ON b.id = p."bookingId"
       JOIN "Vehicle" v ON v.id = b."vehicleId"

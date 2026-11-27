@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
   Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus, CalendarCheck,
-  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket,
+  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket, ExternalLink, MoreHorizontal,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
@@ -27,6 +27,7 @@ type Tab = 'analytics' | 'fleet' | 'media' | 'bookings' | 'coupons' | 'users' | 
 export default function Admin() {
   const { user, loading, isStaff, hasRole, logout } = useAuth();
   const [tab, setTab] = useState<Tab>('analytics');
+  const [moreOpen, setMoreOpen] = useState(false);
 
   if (loading) {
     return <div className="grid min-h-screen place-items-center bg-mist-100"><span className="size-8 animate-spin rounded-full border-2 border-line border-t-brand-600" /></div>;
@@ -46,101 +47,92 @@ export default function Admin() {
   }
 
   const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
-  const allTabs: { id: Tab; label: string; icon: React.ElementType; show: boolean }[] = [
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, show: true },
-    { id: 'media', label: 'Media Library', icon: Images, show: true },
-    { id: 'fleet', label: 'Fleet', icon: Car, show: true },
-    { id: 'bookings', label: 'Bookings', icon: CalendarCheck, show: true },
-    { id: 'coupons', label: 'Coupons', icon: Ticket, show: isAdmin },
-    { id: 'users', label: 'Team & Roles', icon: Users, show: isAdmin },
-    { id: 'audit', label: 'Audit Log', icon: ScrollText, show: isAdmin },
+  const allTabs: { id: Tab; label: string; short: string; hint: string; icon: React.ElementType; group: 'Overview' | 'Fleet' | 'Admin'; show: boolean }[] = [
+    { id: 'analytics', label: 'Dashboard', short: 'Home', hint: 'Revenue, bookings and occupancy at a glance', icon: BarChart3, group: 'Overview', show: true },
+    { id: 'bookings', label: 'Bookings', short: 'Bookings', hint: 'Paid bookings and their status', icon: CalendarCheck, group: 'Overview', show: true },
+    { id: 'fleet', label: 'Fleet & prices', short: 'Fleet', hint: 'Cars, daily prices, availability and photos', icon: Car, group: 'Fleet', show: true },
+    { id: 'media', label: 'Media Library', short: 'Media', hint: 'Photos, logo and hero image', icon: Images, group: 'Fleet', show: true },
+    { id: 'coupons', label: 'Coupons', short: 'Coupons', hint: 'Promo codes and discounts', icon: Ticket, group: 'Admin', show: isAdmin },
+    { id: 'users', label: 'Team & Roles', short: 'Team', hint: 'Staff accounts and permissions', icon: Users, group: 'Admin', show: isAdmin },
+    { id: 'audit', label: 'Audit Log', short: 'Audit', hint: 'Who changed what, and when', icon: ScrollText, group: 'Admin', show: isAdmin },
   ];
   const tabs = allTabs.filter((t) => t.show);
-
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
+  const groups = (['Overview', 'Fleet', 'Admin'] as const).map((g) => ({ name: g, items: tabs.filter((t) => t.group === g) })).filter((g) => g.items.length);
+  // Phone: four tabs in the bottom bar, the rest under "More".
+  const primary = tabs.filter((t) => ['analytics', 'bookings', 'fleet', 'media'].includes(t.id));
+  const overflow = tabs.filter((t) => !primary.includes(t));
+  const initials = (user?.name || user?.email || 'A').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
+  const go = (id: Tab) => { setTab(id); setMoreOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
-    <div className="min-h-screen bg-mist-100 lg:flex">
+    <div className="min-h-screen bg-bg lg:flex">
       {/* ── Sidebar (desktop) ── */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/5 bg-navy-950 lg:flex">
-        <div className="flex h-20 items-center gap-2 border-b border-white/5 px-5">
-          <Logo variant="plain" height={44} />
+      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-r border-white/6 bg-navy-950 lg:flex">
+        <div className="flex h-[72px] items-center border-b border-white/6 px-5">
+          <Logo variant="plain" height={40} />
         </div>
 
-        <nav className="flex-1 space-y-1 p-4">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={
-                'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold transition-colors ' +
-                (tab === t.id
-                  ? 'bg-brand-600 text-white shadow-[0_8px_20px_-8px_rgba(229,20,43,0.7)]'
-                  : 'text-brand-100/60 hover:bg-white/5 hover:text-white')
-              }
-            >
-              <t.icon className="size-[18px]" /> {t.label}
-            </button>
+        <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 py-5">
+          {groups.map((g) => (
+            <div key={g.name} className="mb-5">
+              <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[.14em] text-ink-400/70">{g.name}</div>
+              <div className="space-y-0.5">
+                {g.items.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => go(t.id)}
+                    aria-current={tab === t.id ? 'page' : undefined}
+                    className={
+                      'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold transition-colors ' +
+                      (tab === t.id ? 'bg-white/[.06] text-white' : 'text-ink-500 hover:bg-white/[.04] hover:text-white')
+                    }
+                  >
+                    {tab === t.id && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-brand-600" aria-hidden />}
+                    <t.icon className={'size-[18px] ' + (tab === t.id ? 'text-brand-400' : 'text-ink-400 group-hover:text-white')} /> {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="border-t border-white/5 p-4">
-          <div className="mb-3 rounded-xl bg-white/5 px-3 py-2.5">
-            <div className="truncate text-[12.5px] font-bold text-white">{user?.name || user?.email}</div>
-            <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-brand-300">{user?.role}</div>
+        <div className="border-t border-white/6 p-3">
+          <a href="/" target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-semibold text-ink-500 hover:bg-white/[.04] hover:text-white">
+            <ExternalLink className="size-4" /> View website
+          </a>
+          <div className="flex items-center gap-3 rounded-xl bg-white/[.04] p-2.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-600 text-[13px] font-extrabold text-white">{initials}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-bold text-white">{user?.name || user?.email}</div>
+              <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-ink-400">{user?.role?.replace('_', ' ')}</div>
+            </div>
+            <button onClick={logout} aria-label="Logout" title="Logout" className="grid size-9 place-items-center rounded-lg text-ink-400 hover:bg-white/8 hover:text-white">
+              <LogOut className="size-4" />
+            </button>
           </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-xl bg-white/5 px-3.5 py-2.5 text-[13px] font-bold text-white hover:bg-white/10"
-          >
-            <LogOut className="size-4" /> Logout
-          </button>
         </div>
       </aside>
 
       {/* ── Main column ── */}
       <div className="min-w-0 flex-1">
-        {/* Top bar (mobile logo + role; desktop page title) */}
-        <header className="sticky top-0 z-20 border-b border-line bg-navy-950/75 backdrop-blur">
-          <div className="flex items-center gap-3 px-5 py-4 lg:px-8">
-            <div className="lg:hidden">
-              <Logo height={40} />
+        <header className="sticky top-0 z-30 border-b border-white/6 bg-bg/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+          <div className="flex h-14 items-center gap-3 px-4 lg:h-[72px] lg:px-8">
+            {/* Phone: app bar */}
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-600 lg:hidden" aria-hidden>
+              <activeTab.icon className="size-[18px] text-white" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-[17px] font-extrabold text-white lg:text-[22px]">{activeTab.label}</h1>
+              <p className="hidden truncate text-[13px] text-ink-400 lg:block">{activeTab.hint}</p>
             </div>
-            <div className="hidden items-center gap-2 lg:flex">
-              <activeTab.icon className="size-5 text-brand-600" />
-              <h1 className="font-display text-lg font-extrabold text-navy-700">{activeTab.label}</h1>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="grid size-9 place-items-center rounded-xl bg-white/[.06] text-[12px] font-extrabold text-white lg:hidden" title={user?.email}>{initials}</span>
             </div>
-            <div className="ml-auto flex items-center gap-3">
-              <span className="hidden rounded-full bg-mist-200 px-3 py-1.5 text-[12.5px] font-semibold text-navy-700 sm:inline lg:hidden">
-                {user?.role}
-              </span>
-              <button
-                onClick={logout}
-                className="inline-flex items-center gap-2 rounded-xl bg-mist-200 px-3 py-1.5 text-[13px] font-bold text-navy-700 hover:bg-white/5 lg:hidden"
-              >
-                <LogOut className="size-4" /> Logout
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile tab strip */}
-          <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ' +
-                  (tab === t.id ? 'bg-brand-600 text-white' : 'text-ink-500 hover:bg-mist-200')
-                }
-              >
-                <t.icon className="size-4" /> {t.label}
-              </button>
-            ))}
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8">
+        <main className="mx-auto max-w-[1360px] px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
           {tab === 'analytics' && <AnalyticsPanel />}
           {tab === 'media' && <MediaManager />}
           {tab === 'fleet' && <FleetPanel />}
@@ -150,6 +142,56 @@ export default function Admin() {
           {tab === 'audit' && <AuditPanel />}
         </main>
       </div>
+
+      {/* ── Phone: bottom tab bar ── */}
+      <nav aria-label="Admin" className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-navy-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+        <div className="mx-auto grid max-w-md" style={{ gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
+          {primary.map((t) => (
+            <button key={t.id} onClick={() => go(t.id)} aria-current={tab === t.id ? 'page' : undefined}
+              className={'flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-semibold ' + (tab === t.id ? 'text-white' : 'text-ink-400')}>
+              <span className={'grid h-7 w-12 place-items-center rounded-full transition-colors ' + (tab === t.id ? 'bg-brand-600/20 text-brand-400' : '')}>
+                <t.icon className="size-[19px]" />
+              </span>
+              {t.short}
+            </button>
+          ))}
+          <button onClick={() => setMoreOpen(true)} aria-expanded={moreOpen}
+            className={'flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-semibold ' + (overflow.some((t) => t.id === tab) ? 'text-white' : 'text-ink-400')}>
+            <span className="grid h-7 w-12 place-items-center rounded-full"><MoreHorizontal className="size-[19px]" /></span>
+            More
+          </button>
+        </div>
+      </nav>
+
+      {/* ── Phone: "More" sheet ── */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="More">
+          <button className="absolute inset-0 bg-black/60" aria-label="Close" onClick={() => setMoreOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-[24px] border-t border-white/10 bg-surface px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-3">
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+            <div className="mb-4 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-brand-600 text-[13px] font-extrabold text-white">{initials}</span>
+              <div className="min-w-0">
+                <div className="truncate text-[14px] font-bold text-white">{user?.name || user?.email}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">{user?.role?.replace('_', ' ')}</div>
+              </div>
+            </div>
+            <div className="grid gap-1">
+              {overflow.map((t) => (
+                <button key={t.id} onClick={() => go(t.id)} className={'flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold ' + (tab === t.id ? 'bg-white/[.06] text-white' : 'text-ink-700')}>
+                  <t.icon className="size-5 text-brand-400" /> {t.label}
+                </button>
+              ))}
+              <a href="/" className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold text-ink-700">
+                <ExternalLink className="size-5 text-brand-400" /> View website
+              </a>
+              <button onClick={logout} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold text-red-400">
+                <LogOut className="size-5" /> Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -169,12 +211,16 @@ function FleetPanel() {
   const patchLocal = (id: string, p: Partial<Vehicle>) => setFleet((f) => f.map((v) => (v.id === id ? { ...v, ...p } : v)));
   const upsertLocal = (v: Vehicle) => setFleet((f) => (f.some((x) => x.id === v.id) ? f.map((x) => (x.id === v.id ? v : x)) : [v, ...f]));
 
-  const patchPricing = async (id: string, pricePerDay: number) => {
-    patchLocal(id, { pricePerDay });
+  /** Save a new daily rate (USD, cents allowed). Returns false if the API refused it. */
+  const savePrice = async (id: string, pricePerDay: number) => {
+    setError(null);
     try {
       await vehiclesApi.patch(id, { pricePerDay });
+      patchLocal(id, { pricePerDay });
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     }
   };
 
@@ -191,18 +237,18 @@ function FleetPanel() {
     { icon: Car, label: 'Total vehicles', value: fleet.length },
     { icon: Star, label: 'Featured', value: fleet.filter((v) => v.featured).length },
     { icon: CheckCircle2, label: 'Available', value: fleet.filter((v) => v.availability).length },
-    { icon: DollarSign, label: 'Avg / day', value: fleet.length ? formatCurrency(Math.round(fleet.reduce((s, v) => s + v.pricePerDay, 0) / fleet.length)) : '—' },
+    { icon: DollarSign, label: 'Avg / day', value: fleet.length ? formatCurrency(Math.round((fleet.reduce((s, v) => s + v.pricePerDay, 0) / fleet.length) * 100) / 100) : '—' },
   ], [fleet]);
 
   const active = fleet.find((v) => v.id === managing);
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
+          <div key={k.label} className="rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] sm:rounded-3xl sm:p-6">
             <k.icon className="size-6 text-brand-500" />
-            <div className="mt-3 font-display text-3xl font-extrabold text-navy-700">{k.value}</div>
+            <div className="mt-3 font-display text-2xl font-extrabold text-navy-700 sm:text-3xl">{k.value}</div>
             <div className="text-[13px] text-ink-400">{k.label}</div>
           </div>
         ))}
@@ -210,7 +256,7 @@ function FleetPanel() {
 
       {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
-      <div className="mt-8 rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
+      <div className="mt-6 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] sm:mt-8 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-navy-700">Manage fleet</h2>
           <button onClick={() => setCreating(true)}
@@ -218,8 +264,42 @@ function FleetPanel() {
             <Plus className="size-4" /> Add vehicle
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
+        {/* Phone: one card per car */}
+        <ul className="grid gap-3 md:hidden">
+          {fleet.map((v) => (
+            <li key={v.id} className="rounded-2xl border border-line bg-inset p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-mist-200">
+                  <VehicleImage filePath={v.thumbnail?.filePath} alt={v.thumbnail?.alt || v.title} preset="thumb" fit="contain" className="h-full w-full" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold text-navy-700">{v.title}</div>
+                  <div className="text-[12px] text-ink-400">{v.category} · {v.brand}</div>
+                </div>
+                <IB title="Edit vehicle" onClick={() => setEditing(v)}><Pencil className="size-4" /></IB>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+                <PriceInput value={v.pricePerDay} onSave={(n) => savePrice(v.id, n)} label={`${v.title} price per day`} />
+                <div className="flex items-center gap-4 text-[12px] font-semibold text-ink-400">
+                  <span className="flex items-center gap-2">Featured <Toggle on={v.featured} onClick={() => toggle(v.id, 'featured', !v.featured)} /></span>
+                  <span className="flex items-center gap-2">Available <Toggle on={v.availability} onClick={() => toggle(v.id, 'availability', !v.availability)} /></span>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-1.5">
+                <button onClick={() => setManaging(v.id)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] font-bold text-navy-700">
+                  <ImageIcon className="size-3.5" /> {v.gallery.length} photos
+                </button>
+                <IB title="Availability calendar" onClick={() => setCalendarFor(v)}><CalendarDays className="size-4" /></IB>
+                <span className="ml-auto"><IB title="Delete vehicle" danger onClick={() => setDeleting(v)}><Trash2 className="size-4" /></IB></span>
+              </div>
+            </li>
+          ))}
+          {fleet.length === 0 && <li className="py-8 text-center text-ink-400">No vehicles yet. Tap “Add vehicle”.</li>}
+        </ul>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
                 <th className="pb-3">Vehicle</th><th className="pb-3">Price / day</th>
@@ -238,11 +318,7 @@ function FleetPanel() {
                     </div>
                   </td>
                   <td className="py-3">
-                    <div className="inline-flex items-center rounded-lg border border-line px-2">
-                      <span className="text-ink-400">$</span>
-                      <input type="number" value={v.pricePerDay} onChange={(e) => patchPricing(v.id, Number(e.target.value))}
-                        className="w-16 bg-transparent py-1.5 font-bold text-navy-700 focus:outline-none" />
-                    </div>
+                    <PriceInput value={v.pricePerDay} onSave={(n) => savePrice(v.id, n)} label={`${v.title} price per day`} />
                   </td>
                   <td className="py-3 text-center"><Toggle on={v.featured} onClick={() => toggle(v.id, 'featured', !v.featured)} /></td>
                   <td className="py-3 text-center"><Toggle on={v.availability} onClick={() => toggle(v.id, 'availability', !v.availability)} /></td>
@@ -372,9 +448,9 @@ function VehicleFormDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle | n
           <div><label className={label}>Brand</label><input className={field} value={form.brand} onChange={(e) => set('brand', e.target.value)} placeholder="Toyota" /></div>
           <div><label className={label}>Year</label><input type="number" className={field} value={form.year} onChange={(e) => set('year', num(e.target.value))} /></div>
           <div><label className={label}>Colour</label><input className={field} value={form.color} onChange={(e) => set('color', e.target.value)} placeholder="Pearl White" /></div>
-          <div><label className={label}>Price / day ($)</label><input type="number" className={field} value={form.pricePerDay} onChange={(e) => set('pricePerDay', num(e.target.value))} /></div>
-          <div><label className={label}>Price / week ($)</label><input type="number" className={field} value={form.pricePerWeek} onChange={(e) => set('pricePerWeek', num(e.target.value))} /></div>
-          <div><label className={label}>Price / month ($)</label><input type="number" className={field} value={form.pricePerMonth} onChange={(e) => set('pricePerMonth', num(e.target.value))} /></div>
+          <div><label className={label}>Price / day ($)</label><input type="number" inputMode="decimal" min="0.01" step="0.01" className={field} value={form.pricePerDay} onChange={(e) => set('pricePerDay', num(e.target.value))} /></div>
+          <div><label className={label}>Price / week ($)</label><input type="number" inputMode="decimal" min="0.01" step="0.01" className={field} value={form.pricePerWeek} onChange={(e) => set('pricePerWeek', num(e.target.value))} /></div>
+          <div><label className={label}>Price / month ($)</label><input type="number" inputMode="decimal" min="0.01" step="0.01" className={field} value={form.pricePerMonth} onChange={(e) => set('pricePerMonth', num(e.target.value))} /></div>
           <div><label className={label}>Transmission</label>
             <select className={field} value={form.transmission} onChange={(e) => set('transmission', e.target.value as Transmission)}>{TRANSMISSIONS.map((t) => <option key={t} value={t}>{t}</option>)}</select>
           </div>
@@ -573,6 +649,52 @@ function DeleteVehicleDialog({ vehicle, onClose, onDeleted, onMarkedUnavailable 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Inline daily-rate editor: type a price (cents allowed, e.g. 0.10), then press
+ * Enter, tap Save or leave the field. Nothing is saved while typing.
+ */
+function PriceInput({ value, onSave, label }: { value: number; onSave: (n: number) => Promise<boolean>; label: string }) {
+  const [draft, setDraft] = useState(String(value));
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'invalid'>('idle');
+  useEffect(() => setDraft(String(value)), [value]);
+  const n = Math.round(Number(draft) * 100) / 100;
+  const valid = draft.trim() !== '' && Number.isFinite(n) && n >= 0.01;
+  const dirty = valid && n !== value;
+
+  const commit = async () => {
+    if (!valid) { setState('invalid'); return; }
+    if (!dirty) return;
+    setState('saving');
+    const ok = await onSave(n);
+    setState(ok ? 'saved' : 'idle');
+    if (ok) window.setTimeout(() => setState((st) => (st === 'saved' ? 'idle' : st)), 1800);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className={'inline-flex items-center rounded-lg border px-2 ' + (state === 'invalid' ? 'border-red-500/60' : 'border-line focus-within:border-brand-400')}>
+        <span className="text-ink-400">$</span>
+        <input
+          type="number" inputMode="decimal" min="0.01" step="0.01" aria-label={label}
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setState('idle'); }}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          className="w-20 bg-transparent py-1.5 font-bold text-navy-700 focus:outline-none"
+        />
+        <span className="text-[11px] text-ink-400">/day</span>
+      </div>
+      {state === 'saving' && <Loader2 className="size-4 animate-spin text-ink-400" aria-label="Saving" />}
+      {state === 'saved' && <CheckCircle2 className="size-4 text-emerald-400" aria-label="Saved" />}
+      {state === 'invalid' && <span className="text-[11px] font-semibold text-red-400">Min $0.01</span>}
+      {dirty && state === 'idle' && (
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={commit}
+          className="rounded-lg bg-brand-600 px-2.5 py-1.5 text-[12px] font-bold text-white hover:bg-brand-hover">Save</button>
+      )}
     </div>
   );
 }

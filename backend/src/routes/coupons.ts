@@ -31,7 +31,7 @@ export function computeCouponDiscount(
 // ── Public: validate a code for the current cart ──
 couponsRouter.post('/validate', async (req, res) => {
   const parsed = z
-    .object({ code: z.string().min(1), days: z.number().int().positive(), subtotal: z.number().int().nonnegative() })
+    .object({ code: z.string().min(1), days: z.number().int().positive(), subtotal: z.number().nonnegative() })
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 

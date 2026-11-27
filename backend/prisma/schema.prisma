@@ -75,9 +75,9 @@ model Vehicle {
   brand         String
   year          Int
 
-  pricePerDay   Int
-  pricePerWeek  Int
-  pricePerMonth Int
+  pricePerDay   Float
+  pricePerWeek  Float
+  pricePerMonth Float
 
   transmission  Transmission
   fuelType      FuelType
@@ -277,11 +277,11 @@ model Booking {
   insurance      String        @default("basic")
 
   days           Int
-  subtotal       Int
-  discount       Int           @default(0)
+  subtotal       Float
+  discount       Float           @default(0)
   couponCode     String?
-  tax            Int
-  total          Int
+  tax            Float
+  total          Float
 
   status         BookingStatus @default(PENDING)
   createdAt      DateTime      @default(now())
@@ -303,7 +303,7 @@ model Payment {
   bookingId  String
 
   provider   String        // 'waafipay' | 'manual' | 'mock'
-  amount     Int
+  amount     Float
   currency   String        @default("USD")
   status     PaymentStatus @default(PENDING)
   reference  String?       // customer-supplied (EVC/Zaad txn id) or gateway ref

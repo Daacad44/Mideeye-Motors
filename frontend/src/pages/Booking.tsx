@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Loader2, Lock, Smartphone, XCircle, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, Lock, Smartphone, XCircle, Zap } from 'lucide-react';
 import { useVehicle } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
 import { useCurrency, useI18n } from '@/context/LocaleContext';
@@ -27,6 +27,7 @@ const INSURANCE = [
   { id: 'full', price: 30 },
 ];
 const TAX_RATE = 0.05;
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** WaafiPay wallets. The prefix only pre-fills the number field. */
 const WALLETS = [
@@ -38,9 +39,10 @@ const WALLETS = [
 type WalletId = (typeof WALLETS)[number]['id'];
 
 const POLL_MS = 3000;
-const POLL_LIMIT_MS = 4 * 60_000;
+// WaafiPay gives the customer up to 5 minutes to enter their PIN.
+const POLL_LIMIT_MS = 6.5 * 60_000;
 
-type PayState = 'idle' | 'waiting' | 'paid' | 'failed' | 'pending-review';
+type PayState = 'idle' | 'waiting' | 'paid' | 'failed';
 
 export default function Booking() {
   const [params] = useSearchParams();
@@ -74,19 +76,21 @@ export default function Booking() {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [wallet, setWallet] = useState<WalletId>('evc');
   const [walletNumber, setWalletNumber] = useState('61');
-  const [manualRef, setManualRef] = useState('');
   const { phone: brandPhone } = useBranding();
   const pollRef = useRef<number | null>(null);
 
   // Only offer the payment methods the server accepts.
   const [providers, setProviders] = useState<PaymentProvider[]>([]);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
   useEffect(() => {
     paymentsApi
       .providers()
       .then(({ data }) => setProviders(data))
-      .catch(() => setProviders(['manual']));
+      .catch(() => setProviders([]))
+      .finally(() => setProvidersLoaded(true));
   }, []);
   const waafiOn = providers.includes('waafipay');
+  const mockOn = providers.includes('mock');
 
   // Promo code (validated server-side; the discount is display-only here).
   const [couponInput, setCouponInput] = useState('');
@@ -121,9 +125,9 @@ export default function Booking() {
   const subtotal = carTotal + extrasTotal + insuranceTotal;
   const discount = coupon?.valid ? coupon.discount ?? 0 : 0;
   const discountedSubtotal = Math.max(0, subtotal - discount);
-  const tax = Math.round(discountedSubtotal * TAX_RATE);
+  const tax = round2(discountedSubtotal * TAX_RATE);
   // Once the booking exists, its server-computed total is the one charged.
-  const total = booking?.total ?? discountedSubtotal + tax;
+  const total = booking?.total ?? round2(discountedSubtotal + tax);
 
   const applyCoupon = async () => {
     const code = couponInput.trim();
@@ -131,7 +135,7 @@ export default function Booking() {
     setApplyingCoupon(true);
     setCouponError(null);
     try {
-      const { data } = await couponsApi.validate({ code, days, subtotal: Math.round(subtotal) });
+      const { data } = await couponsApi.validate({ code, days, subtotal: round2(subtotal) });
       if (data.valid) setCoupon(data);
       else { setCoupon(null); setCouponError(data.message ?? t('booking.promoInvalid')); }
     } catch (e) {
@@ -148,7 +152,7 @@ export default function Booking() {
     if (!code || booking) return;
     let alive = true;
     couponsApi
-      .validate({ code, days, subtotal: Math.round(subtotal) })
+      .validate({ code, days, subtotal: round2(subtotal) })
       .then((r) => {
         if (!alive) return;
         if (r.data.valid) setCoupon(r.data);
@@ -167,32 +171,6 @@ export default function Booking() {
   const detailsValid = !!form.name.trim() && /\S+@\S+\.\S+/.test(form.email) && form.phone.replace(/\D/g, '').length >= 7;
   const walletDigits = walletNumber.replace(/\D/g, '');
   const walletValid = /^[679]\d{8}$/.test(walletDigits.replace(/^0/, ''));
-
-  /** Create the booking once; later payment attempts reuse it. */
-  const ensureBooking = async () => {
-    if (booking) return booking;
-    if (!vehicle) throw new Error(t('booking.noVehicle'));
-    const { data: avail } = await bookingsApi.checkAvailability(vehicle.slug, form.pickupDate, form.returnDate);
-    if (!avail.available) throw new Error(t('vehicle.datesTaken'));
-    const { data } = await bookingsApi.create({
-      vehicleId: vehicle.id,
-      pickupLocation: form.pickupLocation,
-      dropoffLocation: form.dropoffLocation,
-      pickupDate: form.pickupDate,
-      returnDate: form.returnDate,
-      extras,
-      insurance,
-      extrasPerDay,
-      insurancePerDay,
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      couponCode: coupon?.valid ? coupon.code : undefined,
-    });
-    const b = { id: data.id, reference: data.reference, total: data.total };
-    setBooking(b);
-    return b;
-  };
 
   const poll = (b: { id: string; reference: string }, paymentId: string, startedAt: number) => {
     pollRef.current = window.setTimeout(async () => {
@@ -216,29 +194,52 @@ export default function Booking() {
     }, POLL_MS);
   };
 
-  const pay = async (provider: PaymentProvider) => {
+  /**
+   * Pay-to-book: one call creates the booking hold and sends the WaafiPay PIN
+   * prompt. The booking is confirmed only when the payment is approved; if it
+   * fails the server cancels the hold, so a retry starts a fresh checkout.
+   */
+  const pay = async (method: 'waafipay' | 'mock') => {
+    if (!vehicle) { setError(t('booking.noVehicle')); return; }
     setError(null);
     setSubmitting(true);
     try {
-      const b = await ensureBooking();
-      const { data } = await paymentsApi.create({
-        bookingId: b.id,
-        bookingReference: b.reference,
-        provider,
-        payerPhone: provider === 'waafipay' ? walletDigits : undefined,
-        reference: provider === 'manual' ? manualRef.trim() : undefined,
+      const { data } = await bookingsApi.checkout({
+        vehicleId: vehicle.id,
+        pickupLocation: form.pickupLocation,
+        dropoffLocation: form.dropoffLocation,
+        pickupDate: form.pickupDate,
+        returnDate: form.returnDate,
+        extras,
+        insurance,
+        extrasPerDay,
+        insurancePerDay,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        couponCode: coupon?.valid ? coupon.code : undefined,
+        payerPhone: walletDigits,
+        method,
       });
-      setPayment(data);
-      if (data.status === 'PAID') setPayState('paid');
-      else if (provider === 'waafipay') {
+      setBooking(data.booking);
+      setPayment(data.payment);
+      if (data.payment.status === 'PAID') setPayState('paid');
+      else {
         setPayState('waiting');
-        poll(b, data.id, Date.now());
-      } else setPayState('pending-review');
+        poll(data.booking, data.payment.id, Date.now());
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /** After a failed payment the hold is gone: start over from the payment step. */
+  const retry = () => {
+    setBooking(null);
+    setPayment(null);
+    setPayState('idle');
   };
 
   const next = () => {
@@ -247,13 +248,13 @@ export default function Booking() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    void pay(waafiOn ? 'waafipay' : 'manual');
+    if (waafiOn) void pay('waafipay');
   };
 
   const canNext =
     step === 1 ? step1Valid
       : step === 2 ? true
-        : detailsValid && !!vehicle && !submitting && (waafiOn ? walletValid : manualRef.trim().length >= 4);
+        : detailsValid && !!vehicle && !submitting && waafiOn && walletValid;
 
   const pickWallet = (id: WalletId) => {
     setWallet(id);
@@ -261,8 +262,8 @@ export default function Booking() {
     if (!walletDigits || WALLETS.some((x) => x.prefix === walletDigits)) setWalletNumber(w.prefix);
   };
   const walletLabel = WALLETS.find((w) => w.id === wallet)!.label;
-  const locked = booking !== null; // dates / extras can't change after the booking exists
-  const done = payState === 'paid' || payState === 'pending-review';
+  const locked = booking !== null; // dates / extras can't change while a payment is in progress
+  const done = payState === 'paid';
 
   const field = 'w-full rounded-xl border border-white/12 bg-inset p-3.5 text-base font-medium text-white placeholder:text-ink-400 focus:border-brand-400 focus:outline-none disabled:opacity-60';
   const label = 'flex flex-col gap-2 text-sm font-semibold text-ink-700';
@@ -466,27 +467,23 @@ export default function Booking() {
                     <span className="text-[13px] font-normal text-ink-400">{t('booking.walletHint')}</span>
                   </label>
                 </>
-              ) : (
-                <div className="mt-8 rounded-[14px] border border-white/10 bg-inset p-4">
+              ) : providersLoaded ? (
+                <div role="alert" className="mt-8 rounded-[14px] border border-amber-500/30 bg-amber-500/10 p-4">
                   <div className="flex items-center gap-2 font-bold text-white">
-                    <Smartphone className="size-4 text-brand-400" aria-hidden /> {t('booking.manualTitle')}
+                    <Smartphone className="size-4 text-amber-400" aria-hidden /> {t('booking.payUnavailableTitle')}
                   </div>
-                  <p className="mt-1 text-[13px] text-ink-400">{t('booking.manualHint')}</p>
+                  <p className="mt-1 text-[13px] text-ink-500">{t('booking.payUnavailable')}</p>
                   {brandPhone && (
-                    <p className="mt-3 rounded-xl bg-brand-600/12 px-3.5 py-2.5 text-sm text-ink-700">
-                      {t('booking.manualPayTo', { amount: money(total) })}{' '}
-                      <a href={`tel:${brandPhone.replace(/[^\d+]/g, '')}`} className="font-bold text-white">{brandPhone}</a>
-                    </p>
+                    <a href={`tel:${brandPhone.replace(/[^\d+]/g, '')}`} className="mt-3 inline-flex font-bold text-white underline-offset-4 hover:underline">{brandPhone}</a>
                   )}
-                  <input value={manualRef} onChange={(e) => setManualRef(e.target.value)} placeholder={t('booking.manualPlaceholder')} className={cn(field, 'mt-3')} />
                 </div>
-              )}
+              ) : null}
 
-              {providers.includes('mock') && (
+              {mockOn && (
                 <button
                   type="button"
                   onClick={() => pay('mock')}
-                  disabled={submitting || !detailsValid}
+                  disabled={submitting || !detailsValid || !walletValid}
                   className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 text-sm font-semibold text-ink-500 hover:text-white disabled:opacity-50"
                 >
                   <Zap className="size-4" aria-hidden /> {t('booking.testPay')}
@@ -521,7 +518,7 @@ export default function Booking() {
               <p className="mx-auto mt-2 max-w-md text-ink-500">{t(`booking.fail_${payment?.failureReason ?? 'error'}`)}</p>
               <button
                 type="button"
-                onClick={() => setPayState('idle')}
+                onClick={retry}
                 className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-[14px] bg-brand-600 px-6 font-bold text-white hover:bg-brand-hover"
               >
                 {t('booking.tryAgain')}
@@ -532,17 +529,9 @@ export default function Booking() {
           {/* Done */}
           {done && booking && (
             <div role="status" className="py-4 text-center">
-              {payState === 'paid' ? (
-                <CheckCircle2 className="mx-auto size-16 text-emerald-400" aria-hidden />
-              ) : (
-                <Clock className="mx-auto size-16 text-amber-400" aria-hidden />
-              )}
-              <h2 className="mt-4 text-[28px] font-extrabold">
-                {payState === 'paid' ? t('booking.confirmedTitle') : t('booking.reviewTitle')}
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-ink-500">
-                {payState === 'paid' ? t('booking.confirmedSub') : t('booking.reviewSub')}
-              </p>
+              <CheckCircle2 className="mx-auto size-16 text-emerald-400" aria-hidden />
+              <h2 className="mt-4 text-[28px] font-extrabold">{t('booking.confirmedTitle')}</h2>
+              <p className="mx-auto mt-2 max-w-md text-ink-500">{t('booking.confirmedSub')}</p>
               <dl className="mx-auto mt-6 max-w-sm overflow-hidden rounded-2xl border border-white/8 text-left">
                 <Row label={t('booking.reference')} value={booking.reference} mono />
                 {payment?.reference && payment.provider === 'waafipay' && (
@@ -580,16 +569,14 @@ export default function Booking() {
                   <><Loader2 className="size-4 animate-spin" aria-hidden /> {t('booking.processing')}</>
                 ) : step < 3 ? (
                   <>{t('booking.next')} <ArrowRight className="size-4" aria-hidden /></>
-                ) : waafiOn ? (
-                  t('booking.payNow', { amount: money(total) })
                 ) : (
-                  t('booking.submitRef')
+                  t('booking.payNow', { amount: money(total) })
                 )}
               </button>
             </div>
           )}
-          {payState === 'idle' && step === 3 && !canNext && !submitting && (
-            <p className="mt-3 text-right text-[13px] text-ink-400">{t(waafiOn ? 'booking.fillPrompt' : 'booking.fillPromptManual')}</p>
+          {payState === 'idle' && step === 3 && waafiOn && !canNext && !submitting && (
+            <p className="mt-3 text-right text-[13px] text-ink-400">{t('booking.fillPrompt')}</p>
           )}
         </div>
 

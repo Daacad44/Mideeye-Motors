@@ -2,12 +2,25 @@ import { randomUUID } from 'node:crypto';
 
 /**
  * WaafiPay mobile-wallet checkout (EVC Plus / Hormuud, ZAAD / Telesom,
- * SAHAL / Golis, WAAFI app).
+ * SAHAL / Golis, WAAFI app). Follows https://docs.waafipay.com/purchase-api.
  *
- * `API_PURCHASE` sends a push request to the customer's phone and the HTTP
- * call only returns once they approve with their PIN, reject, or time out — so
- * callers must run it in the background, never inside a web request.
+ * `API_PURCHASE` (POST {apiUrl}, e.g. https://api.waafipay.net/asm or the
+ * sandbox https://sandbox.waafipay.com/asm) sends a push request to the
+ * customer's phone and the HTTP call only returns once they approve with their
+ * PIN, reject, or time out — so callers must run it in the background, never
+ * inside a web request.
+ *
+ * responseCode 2001 only means "request processed": the payment went through
+ * only when params.state is APPROVED.
  */
+
+/** How long to wait for the customer's PIN before giving up (WaafiPay allows 5 minutes). */
+export const WAAFI_TIMEOUT_MS = 5 * 60_000 + 15_000;
+
+/** WaafiPay timestamp, e.g. "2026-11-28 09:04:44" (UTC). */
+export function waafiTimestamp(d = new Date()): string {
+  return d.toISOString().replace('T', ' ').slice(0, 19);
+}
 
 export interface WaafiConfig {
   merchantUid: string;
@@ -54,9 +67,10 @@ export function interpretResponse(body: WaafiResponse): WaafiResult {
   }
   const m = msg.toLowerCase();
   let reason: WaafiFailure = 'error';
-  if (m.includes('4004') || m.includes('abort') || m.includes('rejected')) reason = 'rejected';
+  const state_ = state.toLowerCase();
+  if (code === '5309' || m.includes('timeout') || m.includes('timed out') || m.includes('expired')) reason = 'timeout';
+  else if (code === '5306' || m.includes('4004') || m.includes('abort') || m.includes('reject') || m.includes('cancel') || state_ === 'declined' || state_ === 'cancelled') reason = 'rejected';
   else if (m.includes('8001') || m.includes('insufficient') || m.includes('haraaga')) reason = 'insufficient_funds';
-  else if (m.includes('timeout') || m.includes('timed out') || m.includes('expired')) reason = 'timeout';
   else if (m.includes('account') && (m.includes('invalid') || m.includes('not found') || m.includes('not registered'))) reason = 'invalid_account';
   return { ok: false, reason, message: msg || `WaafiPay error ${code || 'unknown'}`, raw: body };
 }
@@ -64,12 +78,12 @@ export function interpretResponse(body: WaafiResponse): WaafiResult {
 export async function waafiPurchase(
   cfg: WaafiConfig,
   input: { msisdn: string; amount: number; referenceId: string; invoiceId: string; description: string },
-  timeoutMs = 150_000,
+  timeoutMs = WAAFI_TIMEOUT_MS,
 ): Promise<WaafiResult> {
   const payload = {
     schemaVersion: '1.0',
     requestId: randomUUID(),
-    timestamp: new Date().toISOString(),
+    timestamp: waafiTimestamp(),
     channelName: 'WEB',
     serviceName: 'API_PURCHASE',
     serviceParams: {
@@ -83,7 +97,7 @@ export async function waafiPurchase(
         invoiceId: input.invoiceId,
         amount: input.amount.toFixed(2),
         currency: 'USD',
-        description: input.description.slice(0, 100),
+        description: input.description.slice(0, 255),
       },
     },
   };
@@ -96,7 +110,11 @@ export async function waafiPurchase(
       signal: AbortSignal.timeout(timeoutMs),
     });
     const body = (await res.json().catch(() => ({}))) as WaafiResponse;
-    return interpretResponse(body);
+    const result = interpretResponse(body);
+    if (!result.ok) {
+      console.warn(`[waafipay] ${input.referenceId}: HTTP ${res.status} responseCode=${body.responseCode ?? '-'} errorCode=${body.errorCode ?? '-'} state=${body.params?.state ?? '-'} msg=${body.responseMsg ?? '-'}`);
+    }
+    return result;
   } catch (e) {
     const timedOut = (e as Error).name === 'TimeoutError' || (e as Error).name === 'AbortError';
     return {

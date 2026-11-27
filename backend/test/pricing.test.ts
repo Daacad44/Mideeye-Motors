@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addOnsPerDay, PricingError, rentalDays, totals, TAX_RATE } from '../src/lib/pricing.js';
+import { addOnsPerDay, PricingError, rentalDays, rentalSubtotal, round2, totals, TAX_RATE } from '../src/lib/pricing.js';
 
 describe('rentalDays', () => {
   it('counts whole days, minimum 1', () => {
@@ -34,5 +34,18 @@ describe('totals', () => {
 
   it('never goes below zero', () => {
     expect(totals(100, 500)).toEqual({ tax: 0, total: 0 });
+  });
+});
+
+describe('cent prices', () => {
+  it('prices a $0.10/day test rate in cents', () => {
+    const subtotal = rentalSubtotal(0.1, 0, 3);
+    expect(subtotal).toBe(0.3);
+    expect(totals(subtotal, 0)).toEqual({ tax: 0.02, total: 0.32 });
+  });
+
+  it('rounds to cents without float noise', () => {
+    expect(round2(0.1 + 0.2)).toBe(0.3);
+    expect(rentalSubtotal(19.99, 5, 7)).toBe(174.93);
   });
 });
