@@ -1,4 +1,4 @@
-# ── Mideeye Motors API ──
+# ── Daljir Rental Car API ──
 FROM node:22-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache openssl

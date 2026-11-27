@@ -1,8 +1,8 @@
 {
-  "name": "mideeye-motors",
+  "name": "daljir-rental-car",
   "version": "1.0.0",
   "private": true,
-  "description": "Mideeye Motors & Rental Car Co. — premium luxury car rental platform",
+  "description": "Daljir Rental Car — premium luxury car rental platform",
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
     "build": "npm --prefix backend run build && npm --prefix frontend run build",

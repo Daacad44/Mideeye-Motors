@@ -11,7 +11,7 @@ import { env } from '../lib/env.js';
 export const uploadRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
-const DEFAULT_FOLDER = '/mideeye-motors/uploads';
+const DEFAULT_FOLDER = '/daljir/uploads';
 
 function ikErrorMessage(e: unknown): string {
   const msg = e instanceof ImageKitError ? e.message : 'ImageKit request failed';

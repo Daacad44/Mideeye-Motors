@@ -24,13 +24,13 @@ function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
  */
 export function useSeo({ title, description, image, type = 'website' }: SeoInput) {
   useEffect(() => {
-    const fullTitle = title.includes('Mideeye') ? title : `${title} · Mideeye Motors`;
+    const fullTitle = title.includes('Daljir') ? title : `${title} · Daljir Rental Car`;
     document.title = fullTitle;
     if (description) upsertMeta('name', 'description', description);
     upsertMeta('property', 'og:title', fullTitle);
     if (description) upsertMeta('property', 'og:description', description);
     upsertMeta('property', 'og:type', type);
-    upsertMeta('property', 'og:site_name', 'Mideeye Motors');
+    upsertMeta('property', 'og:site_name', 'Daljir Rental Car');
     upsertMeta('property', 'og:url', window.location.href);
     if (image) upsertMeta('property', 'og:image', image);
     upsertMeta('name', 'twitter:card', image ? 'summary_large_image' : 'summary');

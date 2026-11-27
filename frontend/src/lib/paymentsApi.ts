@@ -14,12 +14,20 @@ export interface Payment {
   createdAt: string;
 }
 
+export type PaymentProvider = 'manual' | 'mock';
+
 export const paymentsApi = {
-  create: (payload: { bookingId: string; provider: 'manual' | 'mock'; reference?: string }) =>
+  /** Payment methods this deployment accepts (`mock` is off in production). */
+  providers: () => http<{ data: PaymentProvider[] }>('/payments/providers'),
+
+  /** `bookingReference` proves a guest owns the booking. */
+  create: (payload: { bookingId: string; bookingReference: string; provider: PaymentProvider; reference?: string }) =>
     http<{ data: Payment }>('/payments', { method: 'POST', body: JSON.stringify(payload) }),
 
-  getForBooking: (bookingId: string) =>
-    http<{ data: Payment[] }>(`/payments/booking/${encodeURIComponent(bookingId)}`),
+  getForBooking: (bookingId: string, bookingReference: string) =>
+    http<{ data: Payment[] }>(
+      `/payments/booking/${encodeURIComponent(bookingId)}?reference=${encodeURIComponent(bookingReference)}`,
+    ),
 
   verify: (id: string, status: 'PAID' | 'FAILED' | 'REFUNDED' = 'PAID') =>
     http<{ data: Payment }>(`/payments/${encodeURIComponent(id)}/verify`, {

@@ -1,5 +1,5 @@
 {
-  "name": "mideeye-motors-api",
+  "name": "daljir-rental-api",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:push": "prisma db push",
@@ -45,6 +46,7 @@
     "@types/node": "^22.10.2",
     "@types/nodemailer": "^8.0.1",
     "tsx": "^4.19.2",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "vitest": "^3.2.7"
   }
 }

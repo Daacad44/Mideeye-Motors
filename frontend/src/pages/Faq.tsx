@@ -83,7 +83,7 @@ export default function Faq() {
         <div className="mt-10 rounded-2xl border border-line bg-white p-6 text-center shadow-[var(--shadow-soft)]">
           <p className="text-[15px] font-semibold text-navy-700">Still have a question?</p>
           <p className="mt-1 text-[14px] text-ink-500">
-            Reach us any time at <a href="mailto:hello@mideeyemotors.com" className="font-bold text-brand-600 hover:underline">hello@mideeyemotors.com</a> or +252 61 2345678.
+            Reach us any time at <a href="mailto:hello@daljirrentalcar.com" className="font-bold text-brand-600 hover:underline">hello@daljirrentalcar.com</a> or +252 61 2345678.
           </p>
         </div>
       </div>

@@ -1,11 +1,11 @@
 #!/bin/sh
-# Mideeye Motors API — container entrypoint.
+# Daljir Rental Car API — container entrypoint.
 # Prints an unambiguous status line for every step so a broken deploy is
 # diagnosable from `docker logs` / the Coolify deploy log alone.
 set -u
 
 echo "───────────────────────────────────────────────"
-echo "[boot] Mideeye Motors API starting"
+echo "[boot] Daljir Rental Car API starting"
 echo "[boot] NODE_ENV=${NODE_ENV:-unset}  PORT=${PORT:-unset}"
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[boot] FATAL: DATABASE_URL is not set. Set it in the environment and redeploy."

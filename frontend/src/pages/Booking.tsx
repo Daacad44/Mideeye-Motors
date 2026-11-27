@@ -7,9 +7,11 @@ import { Logo } from '@/components/ui/Logo';
 import { useCurrency, useI18n } from '@/context/LocaleContext';
 import { useSeo } from '@/lib/seo';
 import { bookingsApi } from '@/lib/bookingsApi';
-import { paymentsApi, type Payment } from '@/lib/paymentsApi';
+import { paymentsApi, type Payment, type PaymentProvider } from '@/lib/paymentsApi';
 import { couponsApi, type CouponValidation } from '@/lib/couponsApi';
 
+// Display copy of the server price catalog (backend/src/lib/pricing.ts). The
+// server recomputes every price, so keep these numbers in sync with it.
 const EXTRAS = [
   { id: 'driver', label: 'Professional driver', price: 40 },
   { id: 'childSeat', label: 'Child seat', price: 8 },
@@ -55,6 +57,14 @@ export default function Booking() {
   const [payRef, setPayRef] = useState('');
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  // Only offer the payment methods the server accepts (no test button in production).
+  const [providers, setProviders] = useState<PaymentProvider[]>(['manual']);
+  useEffect(() => {
+    paymentsApi
+      .providers()
+      .then(({ data }) => setProviders(data))
+      .catch(() => setProviders(['manual']));
+  }, []);
 
   // Promo code (validated server-side; the discount is display-only here and is
   // re-computed authoritatively on the server at booking creation).
@@ -183,8 +193,8 @@ export default function Booking() {
     }
   };
 
-  const pay = async (provider: 'manual' | 'mock') => {
-    if (!bookingId) return;
+  const pay = async (provider: PaymentProvider) => {
+    if (!bookingId || !reference) return;
     if (provider === 'manual' && !payRef.trim()) {
       setPayError('Enter the transaction reference from your mobile-money payment.');
       return;
@@ -194,6 +204,7 @@ export default function Booking() {
     try {
       const { data } = await paymentsApi.create({
         bookingId,
+        bookingReference: reference,
         provider,
         reference: provider === 'manual' ? payRef.trim() : undefined,
       });
@@ -293,13 +304,15 @@ export default function Booking() {
                       </button>
                     </div>
 
+                    {providers.includes('mock') && (
                     <button
                       onClick={() => pay('mock')}
                       disabled={paying}
                       className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-300 bg-brand-100/50 px-4 py-3 text-[13.5px] font-bold text-brand-600 hover:bg-brand-100 disabled:opacity-60"
                     >
-                      <Zap className="size-4" /> Pay now (test)
+                      <Zap className="size-4" /> Pay now (test mode)
                     </button>
+                    )}
                   </div>
                 )}
 

@@ -17,7 +17,7 @@ export default function Terms() {
             {t('legal.lastUpdated')}: {UPDATED}
           </p>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-500">
-            These Terms of Service govern your use of Mideeye Motors &amp; Rental Car Co. (“Mideeye Motors”, “we”, “us”)
+            These Terms of Service govern your use of Daljir Rental Car (“Daljir”, “we”, “us”)
             and any vehicle you rent from us. By booking a vehicle you agree to these terms. Please read them carefully.
           </p>
 
@@ -68,7 +68,7 @@ export default function Terms() {
 
           <Section n="8" title="Contact">
             Questions about these terms? Email{' '}
-            <a href="mailto:hello@mideeyemotors.com" className="font-bold text-brand-600 hover:underline">hello@mideeyemotors.com</a>{' '}
+            <a href="mailto:hello@daljirrentalcar.com" className="font-bold text-brand-600 hover:underline">hello@daljirrentalcar.com</a>{' '}
             or call +252 61 2345678. We may update these terms from time to time; the “last updated” date above always
             reflects the current version.
           </Section>

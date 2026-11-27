@@ -85,7 +85,7 @@ export function Hero() {
               {heroImage ? (
                 <img
                   src={heroImage.url}
-                  alt={heroImage.alt || 'Mideeye Motors'}
+                  alt={heroImage.alt || 'Daljir Rental Car'}
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"

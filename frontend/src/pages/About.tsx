@@ -28,7 +28,7 @@ export default function About() {
               From one Land Cruiser to a nationwide fleet
             </h2>
             <p className="mt-5 text-[16px] leading-relaxed text-ink-500">
-              Mideeye Motors began with a single promise: give every traveller a
+              Daljir Rental Car began with a single promise: give every traveller a
               spotless, dependable and beautifully-maintained vehicle. Today we
               operate a curated fleet of SUVs, executive sedans, luxury saloons and
               electric cars across Mogadishu, Hargeisa and Kismayo.

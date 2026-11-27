@@ -83,7 +83,7 @@ export function Footer() {
                 <Phone className="size-4 text-brand-400" /> +252 61 2345678
               </li>
               <li className="flex items-center gap-3">
-                <Mail className="size-4 text-brand-400" /> hello@mideeyemotors.com
+                <Mail className="size-4 text-brand-400" /> hello@daljirrentalcar.com
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="mt-0.5 size-4 text-brand-400" /> Maka Al-Mukarama Rd,
@@ -100,7 +100,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-brand-100/60 sm:flex-row">
-          <p>© {new Date().getFullYear()} Mideeye Motors & Rental Car Co. {t('footer.rights')}</p>
+          <p>© {new Date().getFullYear()} Daljir Rental Car. {t('footer.rights')}</p>
           <LocaleSwitcher variant="light" />
         </div>
       </div>

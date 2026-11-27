@@ -11,7 +11,7 @@ import { useSeo } from '@/lib/seo';
 export default function Home() {
   const { t } = useI18n();
   useSeo({
-    title: 'Mideeye Motors — Premium Car Rental in Somalia',
+    title: 'Daljir Rental Car — Premium Car Rental in Somalia',
     description: t('hero.subtitle'),
     image: `${window.location.origin}/pwa-512x512.png`,
   });

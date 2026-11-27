@@ -4,7 +4,7 @@ import { useSeo } from '@/lib/seo';
 
 export default function NotFound() {
   const { t } = useI18n();
-  useSeo({ title: '404 — Mideeye Motors' });
+  useSeo({ title: '404 — Daljir Rental Car' });
   return (
     <div className="grid min-h-[70vh] place-items-center bg-mist-100 px-5 text-center">
       <div>
