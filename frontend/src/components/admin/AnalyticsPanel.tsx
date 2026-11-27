@@ -145,11 +145,11 @@ export function AnalyticsPanel() {
               className="rounded-xl border border-line px-3 py-1.5 text-[13px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none" />
           </div>
         )}
-        <div className="ml-auto flex gap-2">
-          <button onClick={exportBookings} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
+        <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
+          <button onClick={exportBookings} className="inline-flex justify-center items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
             <Download className="size-4" /> Bookings CSV
           </button>
-          <button onClick={exportRevenue} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
+          <button onClick={exportRevenue} className="inline-flex justify-center items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
             <Download className="size-4" /> Revenue CSV
           </button>
         </div>
@@ -244,14 +244,15 @@ export function AnalyticsPanel() {
 }
 
 function Kpi({ icon: Icon, label, value, delta }: { icon: React.ElementType; label: string; value: string; delta: number | null }) {
-  const up = delta != null && delta >= 0;
+  const up = delta != null && delta > 0;
+  const flat = delta === 0;
   return (
     <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between">
         <Icon className="size-6 text-brand-500" />
         {delta != null && (
-          <span className={'inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[12px] font-bold ' + (up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
-            {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />} {Math.abs(delta)}%
+          <span className={'inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[12px] font-bold ' + (flat ? 'bg-white/6 text-ink-400' : up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
+            {flat ? null : up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />} {Math.abs(delta)}%
           </span>
         )}
       </div>

@@ -153,6 +153,8 @@ export const so: Dictionary = {
     promoInvalid: 'Koodhkan waa khalad ama wuu dhacay.',
     promoNoLonger: 'Koodhkani hadda kuma khuseeyo dalabkaaga.',
     promoApplied: 'Koodhka {code} waa la isticmaalay',
+    fillPromptManual: 'Buuxi magaca, telefoonka, email-ka iyo reference-ka lacag bixinta si aad u sii wadato.',
+    manualPayTo: 'U dir {amount} EVC Plus / ZAAD lambarka',
   },
   auth: {
     welcomeBack: 'Ku Soo Dhawoow',
