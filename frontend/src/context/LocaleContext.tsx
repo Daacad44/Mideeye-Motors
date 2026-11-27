@@ -4,7 +4,6 @@ import { formatMoney, USD_TO_SOS, type Currency } from '@/lib/money';
 
 interface LocaleState {
   locale: Locale;
-  setLocale: (l: Locale) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
   currency: Currency;
   setCurrency: (c: Currency) => void;
@@ -14,25 +13,19 @@ interface LocaleState {
 
 const LocaleContext = createContext<LocaleState | null>(null);
 
-const readLocale = (): Locale => {
-  const v = typeof localStorage !== 'undefined' ? localStorage.getItem('mm_locale') : null;
-  return v === 'en' || v === 'so' ? v : 'so'; // default to Somali for this market
-};
 const readCurrency = (): Currency => {
   const v = typeof localStorage !== 'undefined' ? localStorage.getItem('mm_currency') : null;
   return v === 'SOS' || v === 'USD' ? v : 'USD'; // default USD (the charged currency)
 };
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(readLocale);
+  const locale: Locale = 'en';
   const [currency, setCurrencyState] = useState<Currency>(readCurrency);
   const rate = USD_TO_SOS;
 
-  useEffect(() => { document.documentElement.lang = locale; }, [locale]);
-
-  const setLocale = useCallback((l: Locale) => {
-    setLocaleState(l);
-    localStorage.setItem('mm_locale', l);
+  useEffect(() => {
+    document.documentElement.lang = 'en';
+    try { localStorage.removeItem('mm_locale'); } catch { /* storage unavailable */ }
   }, []);
 
   const setCurrency = useCallback((c: Currency) => {
@@ -47,7 +40,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const money = useCallback((amountUsd: number) => formatMoney(amountUsd, { currency, rate }), [currency, rate]);
 
   return (
-    <LocaleContext.Provider value={{ locale, setLocale, t, currency, setCurrency, rate, money }}>
+    <LocaleContext.Provider value={{ locale, t, currency, setCurrency, rate, money }}>
       {children}
     </LocaleContext.Provider>
   );
@@ -61,8 +54,8 @@ function useLocaleContext() {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useI18n() {
-  const { t, locale, setLocale } = useLocaleContext();
-  return { t, locale, setLocale };
+  const { t, locale } = useLocaleContext();
+  return { t, locale };
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

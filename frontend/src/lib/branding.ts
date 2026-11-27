@@ -23,7 +23,20 @@ export interface Branding {
   primaryColor: string;
   phone: string;
   email: string;
+  address: string;
+  whatsapp: string;
   socials: Record<string, string>;
+  /** Rental pricing set in Admin → Settings (null until the API answers). */
+  pricing: PricingCatalog | null;
+}
+
+export interface PricingCatalog {
+  /** Fraction, e.g. 0.05 = 5%. */
+  taxRate: number;
+  /** USD per day by extra id (driver, childSeat, wifi, gps). */
+  extras: Record<string, number>;
+  /** USD per day by insurance tier (basic, premium, full). */
+  insurance: Record<string, number>;
 }
 
 const EMPTY: Branding = {
@@ -33,7 +46,10 @@ const EMPTY: Branding = {
   primaryColor: '#0b67c2',
   phone: '',
   email: '',
+  address: '',
+  whatsapp: '',
   socials: {},
+  pricing: null,
 };
 
 let cache: Promise<Branding> | null = null;
@@ -46,7 +62,7 @@ function fetchBranding(): Promise<Branding> {
   return (async () => {
     try {
       const res = await fetch(`${API_URL}/branding`, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) return (await res.json()) as Branding;
+      if (res.ok) return { ...EMPTY, ...((await res.json()) as Partial<Branding>) };
     } catch {
       /* network error — fall through to empty branding (placeholder logo) */
     }

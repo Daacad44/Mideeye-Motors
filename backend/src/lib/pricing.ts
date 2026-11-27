@@ -8,7 +8,7 @@
 
 export const TAX_RATE = 0.05;
 
-/** Optional extras, priced in whole USD per day. */
+/** Default optional extras, USD per day (an admin can override them in Settings). */
 export const EXTRAS: Record<string, number> = {
   driver: 40,
   childSeat: 8,
@@ -16,7 +16,7 @@ export const EXTRAS: Record<string, number> = {
   gps: 5,
 };
 
-/** Insurance tiers, priced in whole USD per day. */
+/** Default insurance tiers, USD per day (an admin can override them in Settings). */
 export const INSURANCE: Record<string, number> = {
   basic: 0,
   premium: 18,
@@ -37,15 +37,44 @@ export class PricingError extends Error {}
  * rejected rather than silently priced at zero, and duplicate extras are
  * counted once.
  */
-export function addOnsPerDay(extras: string[], insurance: string) {
+export function addOnsPerDay(extras: string[], insurance: string, catalog: PricingCatalog = DEFAULT_CATALOG) {
   const unique = [...new Set(extras)];
-  const unknown = unique.filter((id) => !(id in EXTRAS));
+  const unknown = unique.filter((id) => !(id in catalog.extras));
   if (unknown.length) throw new PricingError(`Unknown extra: ${unknown.join(', ')}`);
-  if (!(insurance in INSURANCE)) throw new PricingError(`Unknown insurance option: ${insurance}`);
+  if (!(insurance in catalog.insurance)) throw new PricingError(`Unknown insurance option: ${insurance}`);
   return {
     extras: unique,
-    extrasPerDay: unique.reduce((sum, id) => sum + EXTRAS[id], 0),
-    insurancePerDay: INSURANCE[insurance],
+    extrasPerDay: round2(unique.reduce((sum, id) => sum + catalog.extras[id], 0)),
+    insurancePerDay: catalog.insurance[insurance],
+  };
+}
+
+export interface PricingCatalog {
+  taxRate: number;
+  extras: Record<string, number>;
+  insurance: Record<string, number>;
+}
+
+export const DEFAULT_CATALOG: PricingCatalog = { taxRate: TAX_RATE, extras: EXTRAS, insurance: INSURANCE };
+
+/**
+ * Merge admin overrides onto the defaults. Only the known ids are priced, so a
+ * stored JSON blob can never add an option the booking form doesn't offer;
+ * bad values (negative, non-numeric) fall back to the default.
+ */
+export function buildCatalog(stored: { taxRate?: number | null; extrasPricing?: unknown; insurancePricing?: unknown } | null): PricingCatalog {
+  const pick = (defaults: Record<string, number>, over: unknown) =>
+    Object.fromEntries(
+      Object.entries(defaults).map(([id, def]) => {
+        const v = over && typeof over === 'object' ? (over as Record<string, unknown>)[id] : undefined;
+        return [id, typeof v === 'number' && Number.isFinite(v) && v >= 0 ? round2(v) : def];
+      }),
+    );
+  const tax = stored?.taxRate;
+  return {
+    taxRate: typeof tax === 'number' && tax >= 0 && tax <= 0.5 ? tax : TAX_RATE,
+    extras: pick(EXTRAS, stored?.extrasPricing),
+    insurance: pick(INSURANCE, stored?.insurancePricing),
   };
 }
 
@@ -58,8 +87,8 @@ export function rentalSubtotal(pricePerDay: number, addOnsPerDayTotal: number, d
 }
 
 /** Subtotal, tax and total for a rental, after an already-validated discount. */
-export function totals(subtotal: number, discount: number) {
+export function totals(subtotal: number, discount: number, taxRate = TAX_RATE) {
   const discountedSubtotal = round2(Math.max(0, subtotal - discount));
-  const tax = round2(discountedSubtotal * TAX_RATE);
+  const tax = round2(discountedSubtotal * taxRate);
   return { tax, total: round2(discountedSubtotal + tax) };
 }

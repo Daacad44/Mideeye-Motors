@@ -220,7 +220,14 @@ model Branding {
   primaryColor  String      @default("#0b67c2")
   phone         String      @default("")
   email         String      @default("")
+  address       String      @default("")
+  whatsapp      String      @default("")
   socials       Json?
+
+  // Rental pricing an admin can change without a deploy. Null = built-in defaults.
+  taxRate          Float    @default(0.05)
+  extrasPricing    Json?    // { driver: 40, childSeat: 8, wifi: 6, gps: 5 } USD per day
+  insurancePricing Json?    // { basic: 0, premium: 18, full: 30 } USD per day
 
   updatedAt     DateTime    @updatedAt
 }

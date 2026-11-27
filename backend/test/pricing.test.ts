@@ -49,3 +49,21 @@ describe('cent prices', () => {
     expect(rentalSubtotal(19.99, 5, 7)).toBe(174.93);
   });
 });
+
+describe('admin pricing catalog', () => {
+  it('uses admin overrides for known options only', async () => {
+    const { buildCatalog } = await import('../src/lib/pricing.js');
+    const c = buildCatalog({ taxRate: 0.1, extrasPricing: { driver: 25.5, rocket: 99 }, insurancePricing: { premium: -3 } });
+    expect(c.taxRate).toBe(0.1);
+    expect(c.extras.driver).toBe(25.5);
+    expect(c.extras).not.toHaveProperty('rocket');
+    expect(c.insurance.premium).toBe(18); // invalid override falls back
+    expect(addOnsPerDay(['driver'], 'basic', c).extrasPerDay).toBe(25.5);
+    expect(totals(100, 0, c.taxRate)).toEqual({ tax: 10, total: 110 });
+  });
+
+  it('falls back to defaults when nothing is stored', async () => {
+    const { buildCatalog, DEFAULT_CATALOG } = await import('../src/lib/pricing.js');
+    expect(buildCatalog(null)).toEqual(DEFAULT_CATALOG);
+  });
+});

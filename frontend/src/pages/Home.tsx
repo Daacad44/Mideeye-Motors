@@ -12,7 +12,7 @@ import { useSeo } from '@/lib/seo';
 export default function Home() {
   const { t } = useI18n();
   useSeo({
-    title: 'Daljir Rental Car — Kiro baabuur heer sare ah',
+    title: 'Daljir Rental Car — Premium car rental in Somalia',
     description: t('home.heroSub'),
     image: `${window.location.origin}/images/fleet/toyota-prado-tx/front-three-quarter.webp`,
   });

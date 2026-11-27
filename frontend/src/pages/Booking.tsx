@@ -15,18 +15,10 @@ import { useBranding } from '@/lib/branding';
 
 // Display copy of the server price catalog (backend/src/lib/pricing.ts). The
 // server recomputes every price, so keep these numbers in sync with it.
-const EXTRAS = [
-  { id: 'driver', price: 40 },
-  { id: 'childSeat', price: 8 },
-  { id: 'wifi', price: 6 },
-  { id: 'gps', price: 5 },
-];
-const INSURANCE = [
-  { id: 'basic', price: 0 },
-  { id: 'premium', price: 18 },
-  { id: 'full', price: 30 },
-];
-const TAX_RATE = 0.05;
+// Defaults until Admin → Settings pricing loads; the server always re-prices.
+const DEFAULT_EXTRAS: Record<string, number> = { driver: 40, childSeat: 8, wifi: 6, gps: 5 };
+const DEFAULT_INSURANCE: Record<string, number> = { basic: 0, premium: 18, full: 30 };
+const DEFAULT_TAX_RATE = 0.05;
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** WaafiPay wallets. The prefix only pre-fills the number field. */
@@ -76,7 +68,10 @@ export default function Booking() {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [wallet, setWallet] = useState<WalletId>('evc');
   const [walletNumber, setWalletNumber] = useState('61');
-  const { phone: brandPhone } = useBranding();
+  const { phone: brandPhone, pricing } = useBranding();
+  const EXTRAS = useMemo(() => Object.entries({ ...DEFAULT_EXTRAS, ...pricing?.extras }).map(([id, price]) => ({ id, price })), [pricing]);
+  const INSURANCE = useMemo(() => Object.entries({ ...DEFAULT_INSURANCE, ...pricing?.insurance }).map(([id, price]) => ({ id, price })), [pricing]);
+  const TAX_RATE = pricing?.taxRate ?? DEFAULT_TAX_RATE;
   const pollRef = useRef<number | null>(null);
 
   // Only offer the payment methods the server accepts.
@@ -421,7 +416,7 @@ export default function Booking() {
                 </label>
                 <label className={cn(label, 'sm:col-span-2')}>
                   <span>{t('booking.email')} {req}</span>
-                  <input type="email" className={field} autoComplete="email" disabled={locked} value={form.email} placeholder="magac@email.com"
+                  <input type="email" className={field} autoComplete="email" disabled={locked} value={form.email} placeholder="name@email.com"
                     onChange={(e) => setForm({ ...form, email: e.target.value })} />
                   <span className="text-[13px] font-normal text-ink-400">{t('booking.emailHint')}</span>
                 </label>
@@ -604,7 +599,7 @@ export default function Booking() {
                 {extrasTotal > 0 && <SumRow label={t('booking.extras')} value={money(extrasTotal)} />}
                 {insuranceTotal > 0 && <SumRow label={t('booking.insurance')} value={money(insuranceTotal)} />}
                 {discount > 0 && <SumRow label={`${t('booking.discount')}${coupon?.code ? ` (${coupon.code})` : ''}`} value={`− ${money(discount)}`} />}
-                <SumRow label={t('booking.tax')} value={money(booking ? Math.max(0, booking.total - discountedSubtotal) : tax)} />
+                <SumRow label={t('booking.tax', { rate: Math.round(TAX_RATE * 1000) / 10 })} value={money(booking ? Math.max(0, booking.total - discountedSubtotal) : tax)} />
               </dl>
 
               {!locked && (

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Clock, Activity, DollarSign, BadgeCheck, Download } from 'lucide-react';
+import { ClipboardList, Clock, Activity, DollarSign, BadgeCheck, Download, Plus, Pencil, Trash2, Banknote, Loader2 } from 'lucide-react';
+import { BookingForm } from './BookingForm';
+import { useAuth } from '@/context/AuthContext';
 import { VehicleImage } from '@/components/VehicleImage';
 import { bookingsApi, type Booking, type BookingStatus } from '@/lib/bookingsApi';
 import { paymentsApi, type PaymentStatus } from '@/lib/paymentsApi';
@@ -39,6 +41,57 @@ export function BookingsPanel() {
   const [showUnpaid, setShowUnpaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [formFor, setFormFor] = useState<Booking | 'new' | null>(null);
+  const [deleting, setDeleting] = useState<Booking | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
+
+  /** Record money staff already received (cash / mobile money): marks it paid and confirms the booking. */
+  const recordPayment = async (b: Booking) => {
+    setBusy(b.id);
+    setError(null);
+    try {
+      await paymentsApi.create({ bookingId: b.id, bookingReference: b.reference, provider: 'manual' });
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (b: Booking) => {
+    setBusy(b.id);
+    setError(null);
+    try {
+      await bookingsApi.remove(b.id);
+      setBookings((bs) => bs.filter((x) => x.id !== b.id));
+      setDeleting(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const canRecord = (b: Booking) => b.paymentStatus !== 'PAID' && b.status !== 'CANCELLED' && b.status !== 'COMPLETED';
+  const actions = (b: Booking) => (
+    <div className="flex items-center gap-1.5">
+      <button onClick={() => setFormFor(b)} title="Edit booking" aria-label="Edit booking"
+        className="grid size-9 place-items-center rounded-lg border border-line text-navy-700 hover:border-brand-400 hover:text-brand-400"><Pencil className="size-4" /></button>
+      {canRecord(b) && (
+        <button onClick={() => recordPayment(b)} disabled={busy === b.id} title="Record payment received"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-2.5 text-[12.5px] font-bold text-navy-700 hover:border-emerald-400 hover:text-emerald-400 disabled:opacity-50">
+          {busy === b.id ? <Loader2 className="size-4 animate-spin" /> : <Banknote className="size-4" />} Mark paid
+        </button>
+      )}
+      {isAdmin && (
+        <button onClick={() => setDeleting(b)} title="Delete booking" aria-label="Delete booking"
+          className="grid size-9 place-items-center rounded-lg border border-line text-red-400 hover:border-red-400"><Trash2 className="size-4" /></button>
+      )}
+    </div>
+  );
 
   // KPIs always reflect the full set, so the table filters client-side.
   const load = () => {
@@ -103,7 +156,13 @@ export function BookingsPanel() {
 
       <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-4">
-          <h3 className="font-display text-lg font-bold text-navy-700">All bookings</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="font-display text-lg font-bold text-navy-700">All bookings</h3>
+            <button onClick={() => setFormFor('new')}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-[13px] font-bold text-white hover:bg-brand-hover">
+              <Plus className="size-4" /> New booking
+            </button>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {unpaidCount > 0 && (
               <label className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-500">
@@ -168,7 +227,10 @@ export function BookingsPanel() {
                     </span>
                   )}
                 </div>
-                <div className="mt-1.5 font-mono text-[11px] text-ink-400">{b.reference}</div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="truncate font-mono text-[11px] text-ink-400">{b.reference}</span>
+                  {actions(b)}
+                </div>
               </li>
             );
           })}
@@ -179,7 +241,7 @@ export function BookingsPanel() {
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead>
               <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">
-                <th className="p-4">Customer</th><th className="p-4">Vehicle</th><th className="p-4">Dates</th><th className="p-4">Status</th><th className="p-4">Payment</th><th className="p-4 text-right">Total</th>
+                <th className="p-4">Customer</th><th className="p-4">Vehicle</th><th className="p-4">Dates</th><th className="p-4">Status</th><th className="p-4">Payment</th><th className="p-4 text-right">Total</th><th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -241,18 +303,45 @@ export function BookingsPanel() {
                     })()}
                   </td>
                   <td className="p-4 text-right font-bold text-navy-700">{formatCurrency(b.total)}</td>
+                  <td className="p-4"><div className="flex justify-end">{actions(b)}</div></td>
                 </tr>
               ))}
               {loading && (
-                <tr><td colSpan={6} className="py-12 text-center"><span className="inline-block size-7 animate-spin rounded-full border-2 border-line border-t-brand-600" /></td></tr>
+                <tr><td colSpan={7} className="py-12 text-center"><span className="inline-block size-7 animate-spin rounded-full border-2 border-line border-t-brand-600" /></td></tr>
               )}
               {!loading && rows.length === 0 && (
-                <tr><td colSpan={6} className="py-12 text-center text-ink-400">No bookings{filter ? ` with status ${filter}` : ''} yet.</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-ink-400">No bookings{filter ? ` with status ${filter}` : ''} yet.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+      {formFor && (
+        <BookingForm
+          booking={formFor === 'new' ? null : formFor}
+          onClose={() => setFormFor(null)}
+          onSaved={() => { setFormFor(null); void load(); }}
+        />
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-[60] grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Delete booking">
+          <button className="absolute inset-0 bg-black/60" aria-label="Close" onClick={() => setDeleting(null)} />
+          <div className="relative w-full max-w-sm rounded-3xl border border-line bg-surface p-6">
+            <h3 className="font-display text-lg font-extrabold text-white">Delete this booking?</h3>
+            <p className="mt-2 text-[14px] text-ink-500">
+              {deleting.customerName || 'Guest'} · {deleting.vehicle?.title ?? 'Vehicle'} · {formatCurrency(deleting.total)}. This also deletes its payment records and cannot be undone. To keep the history, set the status to CANCELLED instead.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setDeleting(null)} className="min-h-11 flex-1 rounded-xl border border-line font-bold text-white hover:bg-white/8">Keep it</button>
+              <button onClick={() => remove(deleting)} disabled={busy === deleting.id}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 font-bold text-white hover:bg-red-500 disabled:opacity-50">
+                {busy === deleting.id && <Loader2 className="size-4 animate-spin" />} Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, ArrowRight } from 'lucide-react';
+import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, ArrowRight, Music2, Youtube } from 'lucide-react';
 import { Logo } from './ui/Logo';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { useI18n } from '@/context/LocaleContext';
@@ -30,11 +30,13 @@ const SOCIAL = [
   { id: 'facebook', Icon: Facebook, label: 'Facebook' },
   { id: 'instagram', Icon: Instagram, label: 'Instagram' },
   { id: 'twitter', Icon: Twitter, label: 'X / Twitter' },
+  { id: 'tiktok', Icon: Music2, label: 'TikTok' },
+  { id: 'youtube', Icon: Youtube, label: 'YouTube' },
 ];
 
 export function Footer() {
   const { t } = useI18n();
-  const { phone, email, socials } = useBranding();
+  const { phone, email, address, socials } = useBranding();
   const contactEmail = email || 'hello@daljirrentalcar.com';
   const socialLinks = SOCIAL.filter((s) => socials?.[s.id]);
 
@@ -96,7 +98,7 @@ export function Footer() {
                 <a href={`mailto:${contactEmail}`} className="hover:text-white">{contactEmail}</a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin className="mt-0.5 size-4 text-brand-400" aria-hidden /> {t('footer.address')}
+                <MapPin className="mt-0.5 size-4 text-brand-400" aria-hidden /> {address || t('footer.address')}
               </li>
             </ul>
             <Link
