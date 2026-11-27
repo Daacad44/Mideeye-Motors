@@ -54,6 +54,20 @@ export interface CreateBookingPayload {
   couponCode?: string;
 }
 
+export interface BookingEdit {
+  vehicleId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  pickupDate: string;
+  returnDate: string;
+  extras: string[];
+  insurance: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: BookingStatus;
+}
+
 export interface CheckoutPayload extends CreateBookingPayload {
   /** Wallet number that receives the WaafiPay PIN prompt. */
   payerPhone: string;
@@ -83,6 +97,17 @@ export const bookingsApi = {
     const q = qs.toString();
     return http<{ data: Booking[] }>(`/bookings${q ? `?${q}` : ''}`);
   },
+
+  /** Staff: create a booking by hand. `paid` records money already received and confirms it. */
+  createByStaff: (payload: Omit<CreateBookingPayload, 'extrasPerDay' | 'insurancePerDay'> & { paid: boolean; paymentReference?: string }) =>
+    http<{ data: Booking }>('/bookings', { method: 'POST', body: JSON.stringify(payload) }),
+
+  /** Staff: edit a booking. Changing car, dates, extras or insurance re-prices it. */
+  update: (id: string, patch: Partial<BookingEdit>) =>
+    http<{ data: Booking }>(`/bookings/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  /** Admin: delete a booking and its payments. */
+  remove: (id: string) => http<void>(`/bookings/${id}`, { method: 'DELETE' }),
 
   setStatus: (id: string, status: BookingStatus) =>
     http<{ data: Booking }>(`/bookings/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),

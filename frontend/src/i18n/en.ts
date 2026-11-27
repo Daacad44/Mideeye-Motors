@@ -83,7 +83,7 @@ export const en = {
     pickup: 'Pickup',
     ret: 'Return',
     duration: 'Duration',
-    tax: 'Tax (5%)',
+    tax: 'Tax ({rate}%)',
     total: 'Total',
     discount: 'Discount',
     promoPlaceholder: 'Promo code',

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Car, Star, CheckCircle2, DollarSign, Image as ImageIcon,
   Upload, Trash2, ArrowUp, ArrowDown, Crown, LayoutTemplate, X, Images, Users, ScrollText, LogOut, Lock, Plus, CalendarCheck,
-  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket, ExternalLink, MoreHorizontal,
+  Pencil, CalendarDays, Wrench, Loader2, BarChart3, Ticket, ExternalLink, MoreHorizontal, Settings,
 } from 'lucide-react';
 import { useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
@@ -18,11 +18,12 @@ import { AuditPanel } from '@/components/admin/AuditPanel';
 import { BookingsPanel } from '@/components/admin/BookingsPanel';
 import { AnalyticsPanel } from '@/components/admin/AnalyticsPanel';
 import { CouponsPanel } from '@/components/admin/CouponsPanel';
+import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { ButtonLink } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
 import type { Vehicle, VehicleGalleryImage, VehicleCategory, Transmission, FuelType } from '@/types/vehicle';
 
-type Tab = 'analytics' | 'fleet' | 'media' | 'bookings' | 'coupons' | 'users' | 'audit';
+type Tab = 'analytics' | 'fleet' | 'media' | 'bookings' | 'coupons' | 'settings' | 'users' | 'audit';
 
 export default function Admin() {
   const { user, loading, isStaff, hasRole, logout } = useAuth();
@@ -49,10 +50,11 @@ export default function Admin() {
   const isAdmin = hasRole('SUPER_ADMIN', 'ADMIN');
   const allTabs: { id: Tab; label: string; short: string; hint: string; icon: React.ElementType; group: 'Overview' | 'Fleet' | 'Admin'; show: boolean }[] = [
     { id: 'analytics', label: 'Dashboard', short: 'Home', hint: 'Revenue, bookings and occupancy at a glance', icon: BarChart3, group: 'Overview', show: true },
-    { id: 'bookings', label: 'Bookings', short: 'Bookings', hint: 'Paid bookings and their status', icon: CalendarCheck, group: 'Overview', show: true },
+    { id: 'bookings', label: 'Bookings', short: 'Bookings', hint: 'Create, edit and track every booking', icon: CalendarCheck, group: 'Overview', show: true },
     { id: 'fleet', label: 'Fleet & prices', short: 'Fleet', hint: 'Cars, daily prices, availability and photos', icon: Car, group: 'Fleet', show: true },
     { id: 'media', label: 'Media Library', short: 'Media', hint: 'Photos, logo and hero image', icon: Images, group: 'Fleet', show: true },
     { id: 'coupons', label: 'Coupons', short: 'Coupons', hint: 'Promo codes and discounts', icon: Ticket, group: 'Admin', show: isAdmin },
+    { id: 'settings', label: 'Settings', short: 'Settings', hint: 'Contact details, social links and rental prices', icon: Settings, group: 'Admin', show: isAdmin },
     { id: 'users', label: 'Team & Roles', short: 'Team', hint: 'Staff accounts and permissions', icon: Users, group: 'Admin', show: isAdmin },
     { id: 'audit', label: 'Audit Log', short: 'Audit', hint: 'Who changed what, and when', icon: ScrollText, group: 'Admin', show: isAdmin },
   ];
@@ -138,6 +140,7 @@ export default function Admin() {
           {tab === 'fleet' && <FleetPanel />}
           {tab === 'bookings' && <BookingsPanel />}
           {tab === 'coupons' && <CouponsPanel />}
+          {tab === 'settings' && <SettingsPanel />}
           {tab === 'users' && <UsersPanel />}
           {tab === 'audit' && <AuditPanel />}
         </main>

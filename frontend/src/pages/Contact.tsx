@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, MessageCircle } from 'lucide-react';
 import { useBranding } from '@/lib/branding';
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
-  const { phone, email } = useBranding();
-  // Phone comes from Admin → Branding; the row is hidden until it is set.
+  const { phone, email, address, whatsapp } = useBranding();
+  // Contact details come from Admin → Settings; empty rows are hidden.
   const info = [
     ...(phone ? [{ icon: Phone, label: 'Phone', value: phone }] : []),
+    ...(whatsapp ? [{ icon: MessageCircle, label: 'WhatsApp', value: whatsapp }] : []),
     { icon: Mail, label: 'Email', value: email || 'hello@daljirrentalcar.com' },
-    { icon: MapPin, label: 'Address', value: 'Maka Al-Mukarama Rd, Mogadishu' },
+    { icon: MapPin, label: 'Address', value: address || 'Maka Al-Mukarama Rd, Mogadishu' },
     { icon: Clock, label: 'Hours', value: 'Open 24/7' },
   ];
   const field = 'w-full rounded-xl border border-line bg-surface px-4 py-3 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';

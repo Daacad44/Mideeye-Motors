@@ -12,7 +12,7 @@ const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDat
  * Bookings win when a day is covered by both.
  */
 export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; initialMonth?: Date }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [cursor, setCursor] = useState(() => {
     const base = initialMonth ?? new Date();
     return new Date(base.getFullYear(), base.getMonth(), 1);
@@ -43,7 +43,7 @@ export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; i
   for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
   for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(year, month, d));
 
-  const monthLabel = cursor.toLocaleDateString(locale === 'so' ? 'so' : 'en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <div>

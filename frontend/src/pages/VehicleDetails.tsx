@@ -14,6 +14,7 @@ import { categoryKey } from '@/lib/categories';
 import { locationKey } from '@/lib/locations';
 import { cn } from '@/lib/cn';
 import { useSeo } from '@/lib/seo';
+import { useBranding } from '@/lib/branding';
 import { ik } from '@/lib/imagekitImages';
 import { vehiclesApi, type Review, type BusyRange } from '@/lib/vehiclesApi';
 
@@ -41,7 +42,8 @@ export default function VehicleDetails() {
   const [posting, setPosting] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
+  const branding = useBranding();
   const [params] = useSearchParams();
   const [pickupDate, setPickupDate] = useState(params.get('pickupDate') ?? '');
   const [returnDate, setReturnDate] = useState(params.get('returnDate') ?? '');
@@ -142,7 +144,8 @@ export default function VehicleDetails() {
 
   const days = datesValid ? Math.max(1, Math.round((new Date(returnDate).getTime() - new Date(pickupDate).getTime()) / 86400000)) : 0;
   const carTotal = vehicle.pricePerDay * days;
-  const tax = carTotal * 0.05;
+  const taxRate = branding.pricing?.taxRate ?? 0.05;
+  const tax = Math.round(carTotal * taxRate * 100) / 100;
   const side = vehicle.gallery.find((g) => g.tag === 'side') ?? vehicle.coverImage ?? vehicle.heroImage;
   const loc = locationKey(vehicle.location);
   const bookingHref = `/booking?${new URLSearchParams({
@@ -334,7 +337,7 @@ export default function VehicleDetails() {
                   <div className="flex items-center justify-between">
                     <div className="font-bold text-white">{r.reviewer}</div>
                     <div className="text-[12px] text-ink-400">
-                      {new Date(r.createdAt).toLocaleDateString(locale === 'so' ? 'so' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                      {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
                     </div>
                   </div>
                   <div className="mt-1"><Stars value={r.rating} /></div>
@@ -378,7 +381,7 @@ export default function VehicleDetails() {
             {days > 0 && (
               <dl className="m-0 flex flex-col gap-2.5 text-[15px]">
                 <div className="flex justify-between"><dt className="text-ink-500">{money(vehicle.pricePerDay)} × {days} {days > 1 ? t('booking.days') : t('booking.day')}</dt><dd className="m-0 text-white">{money(carTotal)}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink-500">{t('booking.tax')}</dt><dd className="m-0 text-white">{money(tax)}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink-500">{t('booking.tax', { rate: Math.round(taxRate * 1000) / 10 })}</dt><dd className="m-0 text-white">{money(tax)}</dd></div>
                 <div className="flex justify-between border-t border-white/8 pt-3 text-lg font-extrabold"><dt className="text-white">{t('booking.total')}</dt><dd className="m-0 font-display text-2xl text-white">{money(carTotal + tax)}</dd></div>
               </dl>
             )}

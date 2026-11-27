@@ -4,13 +4,14 @@ import { BookingStatus, type Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { cacheInvalidate } from '../lib/redis.js';
 import { audit } from '../lib/audit.js';
-import { authenticate, optionalAuthenticate, requireStaff } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireAdmin, requireStaff } from '../middleware/auth.js';
 import { isRangeBlocked } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
 import { computeCouponDiscount } from './coupons.js';
 import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
 import { addOnsPerDay, PricingError, rentalDays, rentalSubtotal, totals, DAY_MS } from '../lib/pricing.js';
 import { normalizeSomaliMsisdn } from '../lib/waafipay.js';
+import { getPricingCatalog } from '../lib/settings.js';
 import { confirmBookingOnPayment, expireStaleCheckouts, settleWaafiPayment } from '../lib/checkout.js';
 import { enabledProviders } from './payments.js';
 
@@ -104,9 +105,10 @@ async function prepareBooking(body: unknown, userId: string | null): Promise<Pre
     return { ok: false, status: 400, error: 'Pickup date cannot be in the past.' };
   }
 
+  const catalog = await getPricingCatalog();
   let addOns: ReturnType<typeof addOnsPerDay>;
   try {
-    addOns = addOnsPerDay(b.extras, b.insurance);
+    addOns = addOnsPerDay(b.extras, b.insurance, catalog);
   } catch (e) {
     if (e instanceof PricingError) return { ok: false, status: 400, error: e.message };
     throw e;
@@ -135,7 +137,7 @@ async function prepareBooking(body: unknown, userId: string | null): Promise<Pre
     appliedCode = coupon!.code;
   }
 
-  const { tax, total } = totals(subtotal, discount);
+  const { tax, total } = totals(subtotal, discount, catalog.taxRate);
 
   return {
     ok: true,
@@ -168,15 +170,29 @@ async function prepareBooking(body: unknown, userId: string | null): Promise<Pre
 // It starts PENDING until staff record a payment. Customers book through
 // POST /api/bookings/checkout, which only keeps a booking that is paid.
 bookingsRouter.post('/', authenticate, requireStaff, async (req, res) => {
+  const extra = z
+    .object({
+      /** Staff already took the money (cash / mobile money): record it and confirm. */
+      paid: z.boolean().default(false),
+      paymentReference: z.string().trim().max(64).optional(),
+    })
+    .safeParse(req.body ?? {});
+  if (!extra.success) return res.status(400).json({ error: extra.error.flatten() });
   const prep = await prepareBooking(req.body, null);
   if (!prep.ok) return res.status(prep.status).json({ error: prep.error });
+  const { paid, paymentReference } = extra.data;
 
   const booking = await prisma.$transaction(async (tx) => {
-    const created = await tx.booking.create({ data: prep.data, include: bookingInclude });
+    const created = await tx.booking.create({ data: { ...prep.data, status: paid ? 'CONFIRMED' : 'PENDING' } });
+    if (paid) {
+      await tx.payment.create({
+        data: { bookingId: created.id, provider: 'manual', amount: created.total, status: 'PAID', paidAt: new Date(), reference: paymentReference || null },
+      });
+    }
     if (prep.appliedCode) {
       await tx.coupon.update({ where: { code: prep.appliedCode }, data: { usedCount: { increment: 1 } } });
     }
-    return created;
+    return tx.booking.findUniqueOrThrow({ where: { id: created.id }, include: bookingInclude });
   });
 
   await cacheInvalidate('vehicles:*');
@@ -285,6 +301,112 @@ bookingsRouter.get('/reference/:reference', async (req, res) => {
   });
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   res.json({ data: serialize(booking) });
+});
+
+const editSchema = z.object({
+  vehicleId: z.string().optional(),
+  pickupLocation: z.string().trim().min(1).optional(),
+  dropoffLocation: z.string().trim().min(1).optional(),
+  pickupDate: z.string().optional(),
+  returnDate: z.string().optional(),
+  extras: z.array(z.string()).max(10).optional(),
+  insurance: z.string().optional(),
+  name: z.string().trim().min(1).max(120).optional(),
+  email: z.string().trim().email().optional(),
+  phone: z.string().trim().min(5).max(30).optional(),
+  status: z.nativeEnum(BookingStatus).optional(),
+});
+
+// PATCH /api/bookings/:id — edit a booking (staff+). Changing the car, dates,
+// extras or insurance re-checks availability (ignoring this booking) and
+// re-prices it from the current rates; the coupon discount already granted is
+// kept. Audited.
+bookingsRouter.patch('/:id', authenticate, requireStaff, async (req, res) => {
+  const parsed = editSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const e = parsed.data;
+
+  const existing = await prisma.booking.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: 'Booking not found' });
+
+  const pickup = e.pickupDate ? new Date(e.pickupDate) : existing.pickupDate;
+  const ret = e.returnDate ? new Date(e.returnDate) : existing.returnDate;
+  if (Number.isNaN(pickup.getTime()) || Number.isNaN(ret.getTime()) || ret <= pickup) {
+    return res.status(400).json({ error: 'Return date must be after the pickup date.' });
+  }
+
+  let vehicleId = existing.vehicleId;
+  if (e.vehicleId && e.vehicleId !== existing.vehicleId) {
+    const v = await prisma.vehicle.findFirst({ where: { OR: [{ id: e.vehicleId }, { slug: e.vehicleId }] }, select: { id: true } });
+    if (!v) return res.status(404).json({ error: 'Vehicle not found' });
+    vehicleId = v.id;
+  }
+
+  const repricing = vehicleId !== existing.vehicleId || !!e.pickupDate || !!e.returnDate || !!e.extras || !!e.insurance;
+  const data: Prisma.BookingUncheckedUpdateInput = {
+    ...(e.name !== undefined ? { customerName: e.name } : {}),
+    ...(e.email !== undefined ? { customerEmail: e.email } : {}),
+    ...(e.phone !== undefined ? { customerPhone: e.phone } : {}),
+    ...(e.pickupLocation !== undefined ? { pickupLocation: e.pickupLocation } : {}),
+    ...(e.dropoffLocation !== undefined ? { dropoffLocation: e.dropoffLocation } : {}),
+    ...(e.status !== undefined ? { status: e.status } : {}),
+  };
+
+  if (repricing) {
+    const finalStatus = e.status ?? existing.status;
+    if (finalStatus !== 'CANCELLED') {
+      const clash = await prisma.booking.findFirst({
+        where: { id: { not: existing.id }, vehicleId, status: { not: 'CANCELLED' }, pickupDate: { lte: ret }, returnDate: { gte: pickup } },
+        select: { id: true },
+      });
+      const maintenance = await prisma.vehicleMaintenance.findFirst({
+        where: { vehicleId, fromDate: { lte: ret }, toDate: { gte: pickup } },
+        select: { id: true },
+      });
+      if (clash || maintenance) {
+        return res.status(409).json({ error: 'The car is already booked or under maintenance for those dates.' });
+      }
+    }
+    const catalog = await getPricingCatalog();
+    let addOns: ReturnType<typeof addOnsPerDay>;
+    try {
+      addOns = addOnsPerDay(e.extras ?? existing.extras, e.insurance ?? existing.insurance, catalog);
+    } catch (err) {
+      if (err instanceof PricingError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
+    const vehicle = await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } });
+    const days = rentalDays(pickup, ret);
+    const subtotal = rentalSubtotal(vehicle.pricePerDay, addOns.extrasPerDay + addOns.insurancePerDay, days);
+    const discount = Math.min(existing.discount, subtotal);
+    const { tax, total } = totals(subtotal, discount, catalog.taxRate);
+    Object.assign(data, {
+      vehicleId, pickupDate: pickup, returnDate: ret, extras: addOns.extras, insurance: e.insurance ?? existing.insurance,
+      days, subtotal, discount, tax, total,
+    });
+  }
+
+  const booking = await prisma.booking.update({ where: { id: existing.id }, data, include: bookingInclude });
+  await audit(req, 'BOOKING_UPDATE', 'Booking', booking.id, { changes: Object.keys(e), total: booking.total });
+  await cacheInvalidate('vehicles:*');
+  if (existing.status !== 'CONFIRMED' && booking.status === 'CONFIRMED') {
+    await notifyBookingConfirmed(toNotice(booking));
+  }
+  res.json({ data: serialize(booking) });
+});
+
+// DELETE /api/bookings/:id — remove a booking and its payments (admin+). Audited.
+// Prefer cancelling: deleting erases its payment history.
+bookingsRouter.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+  const existing = await prisma.booking.findUnique({ where: { id: req.params.id }, include: { review: { select: { id: true } } } });
+  if (!existing) return res.status(404).json({ error: 'Booking not found' });
+  await prisma.$transaction(async (tx) => {
+    if (existing.review) await tx.review.delete({ where: { id: existing.review.id } });
+    await tx.booking.delete({ where: { id: existing.id } });
+  });
+  await audit(req, 'BOOKING_DELETE', 'Booking', existing.id, { reference: existing.reference, total: existing.total });
+  await cacheInvalidate('vehicles:*');
+  res.status(204).end();
 });
 
 // PATCH /api/bookings/:id/status — change status (staff+); writes an audit log.

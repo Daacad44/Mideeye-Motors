@@ -27,9 +27,11 @@ interface PaymentDriver {
 }
 
 const drivers: Record<'manual' | 'mock', PaymentDriver> = {
+  // Staff-only: staff record money they have already received (cash or
+  // mobile money), so it settles immediately.
   manual: {
     async init({ reference }) {
-      return { status: 'PENDING', reference: reference ?? null, paidAt: null };
+      return { status: 'PAID', reference: reference ?? null, paidAt: new Date() };
     },
   },
   mock: {
@@ -100,9 +102,6 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
   const allowed = provider === 'manual' ? isStaff : enabledProviders().includes(provider);
   if (!allowed) {
     return res.status(400).json({ error: 'This payment method is not available.' });
-  }
-  if (provider === 'manual' && !reference) {
-    return res.status(400).json({ error: 'Enter the transaction reference from your mobile-money payment.' });
   }
   const msisdn = provider === 'waafipay' ? normalizeSomaliMsisdn(payerPhone ?? '') : null;
   if (provider === 'waafipay' && !msisdn) {
