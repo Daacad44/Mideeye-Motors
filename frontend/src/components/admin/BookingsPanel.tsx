@@ -8,6 +8,14 @@ import { formatCurrency } from '@/lib/cn';
 
 const STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
 
+/**
+ * An online checkout that was never paid (rejected PIN, no balance, timeout).
+ * The server cancels these holds automatically; they are not real bookings,
+ * so they are hidden unless the admin asks to see them.
+ */
+const isUnpaidAttempt = (b: Booking) =>
+  b.status === 'CANCELLED' && b.paymentStatus !== 'PAID' && !!b.payments?.some((p) => p.provider === 'waafipay');
+
 const statusBadge: Record<BookingStatus, string> = {
   PENDING: 'bg-amber-500/15 text-amber-300',
   CONFIRMED: 'bg-blue-500/15 text-blue-300',
@@ -28,6 +36,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { mon
 export function BookingsPanel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<'' | BookingStatus>('');
+  const [showUnpaid, setShowUnpaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,23 +76,24 @@ export function BookingsPanel() {
 
   const kpis = useMemo(
     () => [
-      { icon: ClipboardList, label: 'Total bookings', value: bookings.length },
-      { icon: Clock, label: 'Pending', value: bookings.filter((b) => b.status === 'PENDING').length },
+      { icon: ClipboardList, label: 'Paid bookings', value: bookings.filter((b) => b.paymentStatus === 'PAID').length },
+      { icon: Clock, label: 'Paying now', value: bookings.filter((b) => b.status === 'PENDING' && b.paymentStatus === 'PENDING').length },
       { icon: Activity, label: 'Active', value: bookings.filter((b) => b.status === 'ACTIVE').length },
-      { icon: DollarSign, label: 'Revenue', value: formatCurrency(bookings.filter((b) => b.status !== 'CANCELLED').reduce((s, b) => s + b.total, 0)) },
+      { icon: DollarSign, label: 'Revenue', value: formatCurrency(Math.round(bookings.reduce((s, b) => s + (b.amountPaid || 0), 0) * 100) / 100) },
     ],
     [bookings],
   );
 
-  const rows = filter ? bookings.filter((b) => b.status === filter) : bookings;
+  const unpaidCount = bookings.filter(isUnpaidAttempt).length;
+  const rows = bookings.filter((b) => (showUnpaid || !isUnpaidAttempt(b)) && (!filter || b.status === filter));
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
+          <div key={k.label} className="rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] sm:rounded-3xl sm:p-6">
             <k.icon className="size-6 text-brand-500" />
-            <div className="mt-3 font-display text-3xl font-extrabold text-navy-700">{k.value}</div>
+            <div className="mt-3 font-display text-2xl font-extrabold text-navy-700 sm:text-3xl">{k.value}</div>
             <div className="text-[13px] text-ink-400">{k.label}</div>
           </div>
         ))}
@@ -94,7 +104,13 @@ export function BookingsPanel() {
       <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-4">
           <h3 className="font-display text-lg font-bold text-navy-700">All bookings</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {unpaidCount > 0 && (
+              <label className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-500">
+                <input type="checkbox" checked={showUnpaid} onChange={(e) => setShowUnpaid(e.target.checked)} className="accent-brand-600" />
+                Show unpaid attempts ({unpaidCount})
+              </label>
+            )}
             <span className="text-[12px] font-bold uppercase tracking-wide text-ink-400">Status</span>
             <select
               value={filter}
@@ -113,7 +129,53 @@ export function BookingsPanel() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Phone: one card per booking */}
+        <ul className="divide-y divide-line md:hidden">
+          {rows.map((b) => {
+            const last = b.payments?.[0];
+            return (
+              <li key={b.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-mist-200">
+                    <VehicleImage filePath={b.vehicle?.thumbnail?.filePath} alt={b.vehicle?.title || 'Vehicle'} preset="thumb" fit="contain" className="h-full w-full" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="truncate font-bold text-navy-700">{b.customerName || b.user?.name || 'Guest'}</div>
+                      <div className="shrink-0 font-display font-extrabold text-white">{formatCurrency(b.total)}</div>
+                    </div>
+                    <div className="truncate text-[12.5px] text-ink-400">{b.vehicle?.title ?? 'Vehicle'} · {fmtDate(b.pickupDate)} – {fmtDate(b.returnDate)}</div>
+                    {b.customerPhone && <a href={`tel:${b.customerPhone}`} className="text-[12.5px] font-semibold text-ink-500">{b.customerPhone}</a>}
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <select
+                    value={b.status}
+                    onChange={(e) => setStatus(b.id, e.target.value as BookingStatus)}
+                    aria-label="Booking status"
+                    className={'rounded-lg px-2 py-1.5 text-[12px] font-bold focus:outline-none ' + statusBadge[b.status]}
+                  >
+                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <span className={'rounded-lg px-2 py-1.5 text-[12px] font-bold ' + (b.paymentStatus ? payBadge[b.paymentStatus] : 'bg-mist-200 text-ink-400')}>
+                    {b.paymentStatus ?? 'UNPAID'}
+                  </span>
+                  {last && (
+                    <span className="min-w-0 truncate text-[12px] text-ink-400">
+                      {last.provider === 'waafipay' ? 'WaafiPay' : last.provider}
+                      {last.payerPhone ? ` · +${last.payerPhone}` : ''}
+                      {last.status === 'FAILED' && last.failureReason ? ` · ${last.failureReason.replace(/_/g, ' ')}` : ''}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 font-mono text-[11px] text-ink-400">{b.reference}</div>
+              </li>
+            );
+          })}
+          {!loading && rows.length === 0 && <li className="p-10 text-center text-ink-400">No bookings yet.</li>}
+        </ul>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead>
               <tr className="border-b border-line text-[12px] font-bold uppercase tracking-wide text-ink-400">

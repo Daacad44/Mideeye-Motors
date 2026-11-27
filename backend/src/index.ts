@@ -18,6 +18,7 @@ import { adminMediaRouter } from './routes/adminMedia.js';
 import { adminRouter } from './routes/admin.js';
 import { brandingRouter } from './routes/branding.js';
 import { uploadRouter } from './routes/upload.js';
+import { startCheckoutSweeper } from './lib/checkout.js';
 
 const app = express();
 
@@ -97,6 +98,9 @@ process.on('uncaughtException', (err) => console.error('[uncaughtException]', er
 if (!env.imagekit.configured) {
   console.warn('[imagekit] IMAGEKIT_PUBLIC_KEY/IMAGEKIT_PRIVATE_KEY not set — media uploads disabled until configured.');
 }
+
+// Release WaafiPay holds whose PIN prompt was never answered.
+startCheckoutSweeper();
 
 app.listen(env.port, () => {
   console.log(`🚗 Daljir Rental Car API running on http://localhost:${env.port}`);

@@ -2,12 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { PaymentStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
-import { cacheInvalidate } from '../lib/redis.js';
 import { audit } from '../lib/audit.js';
 import { authenticate, optionalAuthenticate, requireStaff, ROLE_RANK, type AuthPayload } from '../middleware/auth.js';
-import { notifyBookingConfirmed } from '../lib/notify.js';
 import { env } from '../lib/env.js';
-import { normalizeSomaliMsisdn, waafiPurchase } from '../lib/waafipay.js';
+import { normalizeSomaliMsisdn } from '../lib/waafipay.js';
+import { confirmBookingOnPayment, expireStaleCheckouts, settleWaafiPayment } from '../lib/checkout.js';
 
 export const paymentsRouter = Router();
 
@@ -40,69 +39,20 @@ const drivers: Record<'manual' | 'mock', PaymentDriver> = {
   },
 };
 
-/**
- * Move a booking to CONFIRMED once its payment settles, and notify the
- * customer — but only as a real transition (not if it's already confirmed or
- * further along). Best-effort notification never breaks the request.
- */
-async function confirmBookingOnPayment(bookingId: string) {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { vehicle: true } });
-  if (!booking) return;
-  if (booking.status !== 'PENDING') return; // already confirmed / active / completed / cancelled
-  await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' } });
-  await cacheInvalidate('vehicles:*');
-  await notifyBookingConfirmed({
-    reference: booking.reference,
-    customerName: booking.customerName,
-    customerEmail: booking.customerEmail,
-    customerPhone: booking.customerPhone,
-    vehicleTitle: booking.vehicle.title,
-    total: booking.total,
-    pickupDate: booking.pickupDate,
-    returnDate: booking.returnDate,
-  });
-}
-
 type Provider = keyof typeof drivers | 'waafipay';
 
 /**
- * Providers this deployment accepts, in the order the checkout offers them.
- * WaafiPay only once its merchant credentials are set; `mock` only when
- * explicitly allowed.
+ * Payment methods the customer checkout offers. Customers only ever pay
+ * automatically (WaafiPay, once its merchant credentials are set); `mock`
+ * settles instantly and exists only where explicitly allowed (never in
+ * production). `manual` is not offered to customers: staff can still record
+ * an offline payment against a booking.
  */
 export function enabledProviders(
   allowMock = env.payments.allowMock,
   waafipay = env.payments.waafipay.configured,
 ): Provider[] {
-  return [...(waafipay ? (['waafipay'] as const) : []), 'manual', ...(allowMock ? (['mock'] as const) : [])];
-}
-
-/** A WaafiPay push that has had no answer for this long is treated as timed out. */
-export const WAAFI_STALE_MS = 3 * 60_000;
-
-/**
- * Run the WaafiPay push in the background and settle the payment row with the
- * outcome. The customer's page polls GET /payments/booking/:id meanwhile.
- */
-async function settleWaafiPayment(paymentId: string, booking: { id: string; reference: string; total: number; vehicleTitle: string }, msisdn: string) {
-  const result = await waafiPurchase(env.payments.waafipay, {
-    msisdn,
-    amount: booking.total,
-    referenceId: paymentId,
-    invoiceId: booking.reference,
-    description: `Daljir Rental Car ${booking.reference} - ${booking.vehicleTitle}`,
-  });
-
-  // Only settle a payment that is still waiting (an admin may have acted).
-  const { count } = await prisma.payment.updateMany({
-    where: { id: paymentId, status: 'PENDING' },
-    data: result.ok
-      ? { status: 'PAID', paidAt: new Date(), reference: result.transactionId || null, failureReason: null }
-      : { status: 'FAILED', failureReason: result.reason },
-  });
-  if (!count) return;
-  if (result.ok) await confirmBookingOnPayment(booking.id);
-  else console.warn(`[waafipay] payment ${paymentId} failed: ${result.reason} — ${result.message}`);
+  return [...(waafipay ? (['waafipay'] as const) : []), ...(allowMock ? (['mock'] as const) : [])];
 }
 
 /**
@@ -145,7 +95,10 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { bookingId, bookingReference, provider, reference, payerPhone } = parsed.data;
 
-  if (!enabledProviders().includes(provider)) {
+  const isStaff = !!req.user && ROLE_RANK[req.user.role] >= ROLE_RANK.STAFF;
+  // Staff may record an offline (manual) payment; customers pay automatically.
+  const allowed = provider === 'manual' ? isStaff : enabledProviders().includes(provider);
+  if (!allowed) {
     return res.status(400).json({ error: 'This payment method is not available.' });
   }
   if (provider === 'manual' && !reference) {
@@ -158,10 +111,7 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
 
   // A WaafiPay push nobody answered (e.g. the server restarted mid-request)
   // must not block the customer from trying again.
-  await prisma.payment.updateMany({
-    where: { bookingId, provider: 'waafipay', status: 'PENDING', createdAt: { lt: new Date(Date.now() - WAAFI_STALE_MS) } },
-    data: { status: 'FAILED', failureReason: 'timeout' },
-  });
+  await expireStaleCheckouts();
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -217,6 +167,7 @@ paymentsRouter.post('/', optionalAuthenticate, async (req, res) => {
 // GET /api/payments/booking/:bookingId — the payment(s) for a booking.
 // Staff, the owning customer, or a guest passing ?reference=<booking reference>.
 paymentsRouter.get('/booking/:bookingId', optionalAuthenticate, async (req, res) => {
+  await expireStaleCheckouts();
   const booking = await prisma.booking.findUnique({ where: { id: req.params.bookingId } });
   const bookingReference = typeof req.query.reference === 'string' ? req.query.reference : undefined;
   if (!booking || !canAccessBooking(booking, req.user, bookingReference)) {

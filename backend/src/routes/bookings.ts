@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, type Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { cacheInvalidate } from '../lib/redis.js';
 import { audit } from '../lib/audit.js';
@@ -9,7 +9,10 @@ import { isRangeBlocked } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
 import { computeCouponDiscount } from './coupons.js';
 import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
-import { addOnsPerDay, PricingError, rentalDays, totals, DAY_MS } from '../lib/pricing.js';
+import { addOnsPerDay, PricingError, rentalDays, rentalSubtotal, totals, DAY_MS } from '../lib/pricing.js';
+import { normalizeSomaliMsisdn } from '../lib/waafipay.js';
+import { confirmBookingOnPayment, expireStaleCheckouts, settleWaafiPayment } from '../lib/checkout.js';
+import { enabledProviders } from './payments.js';
 
 export const bookingsRouter = Router();
 
@@ -77,43 +80,49 @@ const schema = z.object({
   couponCode: z.string().optional(),
 });
 
-// POST /api/bookings — create a booking with server-side price calculation.
-// Optional auth: a valid token links the booking to the user; otherwise it's a
-// guest booking. Availability is enforced authoritatively before creating.
-bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+type Prepared =
+  | { ok: false; status: number; error: unknown }
+  | { ok: true; vehicle: { id: string; title: string }; appliedCode: string | null; data: Prisma.BookingUncheckedCreateInput };
+
+/**
+ * Validate a booking request and price it server-side. Nothing is written.
+ * Availability, the vehicle's daily rate, add-ons and coupons are all
+ * resolved here; client-sent prices are never trusted.
+ */
+async function prepareBooking(body: unknown, userId: string | null): Promise<Prepared> {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) return { ok: false, status: 400, error: parsed.error.flatten() };
   const b = parsed.data;
 
   const pickup = new Date(b.pickupDate);
   const ret = new Date(b.returnDate);
   if (Number.isNaN(pickup.getTime()) || Number.isNaN(ret.getTime()) || ret <= pickup) {
-    return res.status(400).json({ error: 'Return date must be after the pickup date.' });
+    return { ok: false, status: 400, error: 'Return date must be after the pickup date.' };
   }
   // Allow same-day pickups (and small clock/time-zone skew), but not the past.
   if (pickup.getTime() < Date.now() - DAY_MS) {
-    return res.status(400).json({ error: 'Pickup date cannot be in the past.' });
+    return { ok: false, status: 400, error: 'Pickup date cannot be in the past.' };
   }
 
   let addOns: ReturnType<typeof addOnsPerDay>;
   try {
     addOns = addOnsPerDay(b.extras, b.insurance);
   } catch (e) {
-    if (e instanceof PricingError) return res.status(400).json({ error: e.message });
+    if (e instanceof PricingError) return { ok: false, status: 400, error: e.message };
     throw e;
   }
 
-  const vehicle = await prisma.vehicle.findUnique({ where: { id: b.vehicleId } });
-  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+  const vehicle = await prisma.vehicle.findFirst({ where: { OR: [{ id: b.vehicleId }, { slug: b.vehicleId }] } });
+  if (!vehicle) return { ok: false, status: 404, error: 'Vehicle not found' };
   if (!vehicle.availability) {
-    return res.status(409).json({ error: 'This vehicle is not currently available for booking.' });
+    return { ok: false, status: 409, error: 'This vehicle is not currently available for booking.' };
   }
   if (await isRangeBlocked(vehicle.id, pickup, ret)) {
-    return res.status(409).json({ error: 'This vehicle isn’t available for the selected dates (already booked or under maintenance).' });
+    return { ok: false, status: 409, error: 'This vehicle isn’t available for the selected dates (already booked or under maintenance).' };
   }
 
   const days = rentalDays(pickup, ret);
-  const subtotal = (vehicle.pricePerDay + addOns.extrasPerDay + addOns.insurancePerDay) * days;
+  const subtotal = rentalSubtotal(vehicle.pricePerDay, addOns.extrasPerDay + addOns.insurancePerDay, days);
 
   // Re-validate the coupon server-side; the client-sent discount is never trusted.
   let discount = 0;
@@ -121,48 +130,121 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
   if (b.couponCode) {
     const coupon = await prisma.coupon.findUnique({ where: { code: b.couponCode.trim().toUpperCase() } });
     const check = computeCouponDiscount(coupon, days, subtotal);
-    if (!check.valid) return res.status(400).json({ error: 'This promo code is invalid or expired.' });
+    if (!check.valid) return { ok: false, status: 400, error: 'This promo code is invalid or expired.' };
     discount = check.discount;
     appliedCode = coupon!.code;
   }
 
   const { tax, total } = totals(subtotal, discount);
 
-  // Create the booking and bump the coupon's usage atomically.
+  return {
+    ok: true,
+    vehicle: { id: vehicle.id, title: vehicle.title },
+    appliedCode,
+    data: {
+      vehicleId: vehicle.id,
+      userId,
+      customerName: b.name,
+      customerEmail: b.email,
+      customerPhone: b.phone,
+      pickupLocation: b.pickupLocation,
+      dropoffLocation: b.dropoffLocation,
+      pickupDate: pickup,
+      returnDate: ret,
+      extras: addOns.extras,
+      insurance: b.insurance,
+      days,
+      subtotal,
+      discount,
+      couponCode: appliedCode,
+      tax,
+      total,
+      status: 'PENDING',
+    },
+  };
+}
+
+// POST /api/bookings — staff create a booking by hand (e.g. a phone booking).
+// It starts PENDING until staff record a payment. Customers book through
+// POST /api/bookings/checkout, which only keeps a booking that is paid.
+bookingsRouter.post('/', authenticate, requireStaff, async (req, res) => {
+  const prep = await prepareBooking(req.body, null);
+  if (!prep.ok) return res.status(prep.status).json({ error: prep.error });
+
   const booking = await prisma.$transaction(async (tx) => {
-    const created = await tx.booking.create({
-      data: {
-        vehicleId: b.vehicleId,
-        userId: req.user?.id ?? null,
-        customerName: b.name,
-        customerEmail: b.email,
-        customerPhone: b.phone,
-        pickupLocation: b.pickupLocation,
-        dropoffLocation: b.dropoffLocation,
-        pickupDate: pickup,
-        returnDate: ret,
-        extras: addOns.extras,
-        insurance: b.insurance,
-        days,
-        subtotal,
-        discount,
-        couponCode: appliedCode,
-        tax,
-        total,
-        status: 'PENDING',
-      },
-      include: bookingInclude,
-    });
-    if (appliedCode) {
-      await tx.coupon.update({ where: { code: appliedCode }, data: { usedCount: { increment: 1 } } });
+    const created = await tx.booking.create({ data: prep.data, include: bookingInclude });
+    if (prep.appliedCode) {
+      await tx.coupon.update({ where: { code: prep.appliedCode }, data: { usedCount: { increment: 1 } } });
     }
     return created;
   });
 
-  // A new booking changes the vehicle's date-range availability.
   await cacheInvalidate('vehicles:*');
+  await audit(req, 'BOOKING_CREATE', 'Booking', booking.id, { reference: booking.reference });
   await notifyBookingReceived(toNotice(booking));
   res.status(201).json({ data: serialize(booking) });
+});
+
+const checkoutSchema = z.object({
+  /** The wallet number that receives the WaafiPay PIN prompt. */
+  payerPhone: z.string().trim().min(6).max(24),
+  /** `mock` only where PAYMENTS_ALLOW_MOCK is on (never in production). */
+  method: z.enum(['waafipay', 'mock']).default('waafipay'),
+});
+
+// POST /api/bookings/checkout — pay-to-book. Prices the booking, holds the
+// dates, and sends the WaafiPay PIN prompt to the customer's wallet. The
+// booking is CONFIRMED only when the payment is APPROVED; if the customer
+// rejects, lacks funds or doesn't answer, it is CANCELLED automatically.
+// Poll GET /api/payments/booking/:id?reference=… for the outcome.
+bookingsRouter.post('/checkout', optionalAuthenticate, async (req, res) => {
+  const pay = checkoutSchema.safeParse(req.body);
+  if (!pay.success) return res.status(400).json({ error: pay.error.flatten() });
+  const { method } = pay.data;
+  if (!enabledProviders().includes(method)) {
+    return res.status(503).json({ error: 'Online payment is not available right now. Please contact us to book.' });
+  }
+  const msisdn = normalizeSomaliMsisdn(pay.data.payerPhone);
+  if (!msisdn) return res.status(400).json({ error: 'Enter a valid Somali mobile number (e.g. 61 234 5678).' });
+
+  await expireStaleCheckouts();
+  const prep = await prepareBooking(req.body, req.user?.id ?? null);
+  if (!prep.ok) return res.status(prep.status).json({ error: prep.error });
+  if (prep.data.total <= 0) return res.status(400).json({ error: 'This booking has nothing to pay.' });
+
+  const { booking, payment } = await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.create({ data: prep.data });
+    if (prep.appliedCode) {
+      await tx.coupon.update({ where: { code: prep.appliedCode }, data: { usedCount: { increment: 1 } } });
+    }
+    const payment = await tx.payment.create({
+      data: {
+        bookingId: booking.id,
+        provider: method,
+        amount: booking.total,
+        currency: 'USD',
+        status: method === 'mock' ? 'PAID' : 'PENDING',
+        payerPhone: msisdn,
+        ...(method === 'mock' ? { reference: `MOCK-${Date.now()}`, paidAt: new Date() } : {}),
+      },
+    });
+    return { booking, payment };
+  });
+  await cacheInvalidate('vehicles:*');
+
+  res.status(201).json({
+    data: { booking: { id: booking.id, reference: booking.reference, total: booking.total }, payment },
+  });
+
+  if (method === 'mock') {
+    await confirmBookingOnPayment(booking.id).catch((e) => console.error('[checkout] confirm failed', e));
+    return;
+  }
+  void settleWaafiPayment(
+    payment.id,
+    { id: booking.id, reference: booking.reference, total: booking.total, vehicleTitle: prep.vehicle.title },
+    msisdn,
+  ).catch((e) => console.error('[waafipay] settle failed', e));
 });
 
 // GET /api/bookings — list ALL bookings (staff+), optional ?status / ?vehicleId.

@@ -10,6 +10,7 @@ export function formatCurrency(value: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(Math.round(value * 100) / 100) ? 0 : 2,
+    maximumFractionDigits: Number.isInteger(Math.round(value * 100) / 100) ? 0 : 2,
   }).format(value);
 }

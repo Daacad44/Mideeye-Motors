@@ -54,7 +54,20 @@ export interface CreateBookingPayload {
   couponCode?: string;
 }
 
+export interface CheckoutPayload extends CreateBookingPayload {
+  /** Wallet number that receives the WaafiPay PIN prompt. */
+  payerPhone: string;
+  method: 'waafipay' | 'mock';
+}
+
 export const bookingsApi = {
+  /** Pay-to-book: holds the dates and sends the PIN prompt. Confirmed only once paid. */
+  checkout: (payload: CheckoutPayload) =>
+    http<{ data: { booking: { id: string; reference: string; total: number }; payment: Payment } }>('/bookings/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   create: (payload: CreateBookingPayload) =>
     http<{ data: Booking }>('/bookings', { method: 'POST', body: JSON.stringify(payload) }),
 

@@ -83,7 +83,7 @@ type Seed = {
 const data: Seed[] = [
   {
     title: 'Toyota Prado TX', slug: 'toyota-prado-tx', category: 'SUV', brand: 'Toyota', year: 2023,
-    pricePerDay: 100, pricePerWeek: 640, pricePerMonth: 2450, transmission: 'Automatic', fuelType: 'Diesel',
+    pricePerDay: 0.1, pricePerWeek: 0.7, pricePerMonth: 3, transmission: 'Automatic', fuelType: 'Diesel',
     engine: '2.8L Turbo Diesel', horsePower: 201, seats: 7, doors: 5, color: 'Pearl White', location: 'Mogadishu HQ',
     rating: 4.9, reviews: 0, featured: true,
     description: 'The family and long-distance favourite. Seven seats, full-time 4WD and a calm, comfortable cabin — delivered clean, insured and ready for any road in Somalia.',
