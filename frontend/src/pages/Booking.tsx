@@ -11,6 +11,7 @@ import { couponsApi, type CouponValidation } from '@/lib/couponsApi';
 import { SPOTLIGHT_SLUG } from '@/lib/bundledPhotos';
 import { LOCATIONS, locationKey } from '@/lib/locations';
 import { cn } from '@/lib/cn';
+import { useBranding } from '@/lib/branding';
 
 // Display copy of the server price catalog (backend/src/lib/pricing.ts). The
 // server recomputes every price, so keep these numbers in sync with it.
@@ -74,6 +75,7 @@ export default function Booking() {
   const [wallet, setWallet] = useState<WalletId>('evc');
   const [walletNumber, setWalletNumber] = useState('61');
   const [manualRef, setManualRef] = useState('');
+  const { phone: brandPhone } = useBranding();
   const pollRef = useRef<number | null>(null);
 
   // Only offer the payment methods the server accepts.
@@ -470,6 +472,12 @@ export default function Booking() {
                     <Smartphone className="size-4 text-brand-400" aria-hidden /> {t('booking.manualTitle')}
                   </div>
                   <p className="mt-1 text-[13px] text-ink-400">{t('booking.manualHint')}</p>
+                  {brandPhone && (
+                    <p className="mt-3 rounded-xl bg-brand-600/12 px-3.5 py-2.5 text-sm text-ink-700">
+                      {t('booking.manualPayTo', { amount: money(total) })}{' '}
+                      <a href={`tel:${brandPhone.replace(/[^\d+]/g, '')}`} className="font-bold text-white">{brandPhone}</a>
+                    </p>
+                  )}
                   <input value={manualRef} onChange={(e) => setManualRef(e.target.value)} placeholder={t('booking.manualPlaceholder')} className={cn(field, 'mt-3')} />
                 </div>
               )}
@@ -581,7 +589,7 @@ export default function Booking() {
             </div>
           )}
           {payState === 'idle' && step === 3 && !canNext && !submitting && (
-            <p className="mt-3 text-right text-[13px] text-ink-400">{t('booking.fillPrompt')}</p>
+            <p className="mt-3 text-right text-[13px] text-ink-400">{t(waafiOn ? 'booking.fillPrompt' : 'booking.fillPromptManual')}</p>
           )}
         </div>
 

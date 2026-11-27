@@ -150,6 +150,8 @@ export const en = {
     promoInvalid: 'This promo code is invalid or expired.',
     promoNoLonger: 'This promo code no longer applies to your booking.',
     promoApplied: 'Code {code} applied',
+    fillPromptManual: 'Fill in your name, phone, email and the payment reference to continue.',
+    manualPayTo: 'Send {amount} by EVC Plus / ZAAD to',
   },
   auth: {
     welcomeBack: 'Welcome back',

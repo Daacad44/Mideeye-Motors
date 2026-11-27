@@ -6,7 +6,7 @@ import {
 import { mediaApi, type MediaSort } from '@/lib/mediaApi';
 import { ik } from '@/lib/imagekitImages';
 import { ApiError } from '@/lib/http';
-import { refreshBranding } from '@/lib/branding';
+import { refreshBranding, useBranding } from '@/lib/branding';
 import type { MediaImage } from '@/types/media';
 
 function prettyBytes(n: number | null) {
@@ -39,6 +39,7 @@ export function MediaManager() {
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id?: string; ids?: string[]; usedBy: string[] } | null>(null);
   const [logoBusy, setLogoBusy] = useState<string | null>(null);
+  const branding = useBranding();
   const [logoSet, setLogoSet] = useState<string | null>(null);
   const [heroBusy, setHeroBusy] = useState<string | null>(null);
   const [heroSet, setHeroSet] = useState<string | null>(null);
@@ -127,6 +128,21 @@ export function MediaManager() {
     }
   };
 
+  /** Clear the uploaded logo so the header/footer fall back to the Daljir wordmark. */
+  const clearLogo = async () => {
+    setLogoBusy('clear');
+    setError(null);
+    try {
+      await mediaApi.setBranding({ logoImageId: null });
+      await refreshBranding();
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLogoBusy(null);
+    }
+  };
+
   /**
    * Mark this image as the home hero/banner. Persists via PATCH /api/branding
    * (heroImageId), then refreshes the branding cache so the home hero swaps to
@@ -194,6 +210,15 @@ export function MediaManager() {
 
   return (
     <div>
+      {branding.logo && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-3">
+          <img src={branding.logo.url} alt="" className="h-10 w-auto max-w-[140px] object-contain" />
+          <p className="min-w-0 flex-1 text-[13px] text-ink-400">Current site logo. Remove it to show the built-in Daljir wordmark, or set another image as logo below.</p>
+          <button onClick={clearLogo} disabled={logoBusy === 'clear'} className="inline-flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-500 disabled:opacity-50">
+            {logoBusy === 'clear' ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Remove logo
+          </button>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2.5">
