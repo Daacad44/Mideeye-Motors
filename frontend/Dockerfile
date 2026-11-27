@@ -1,4 +1,4 @@
-# ── Mideeye Motors Web (Vite → Nginx) ──
+# ── Daljir Rental Car Web (Vite → Nginx) ──
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./

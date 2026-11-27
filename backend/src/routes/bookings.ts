@@ -9,10 +9,9 @@ import { isRangeBlocked } from '../lib/availability.js';
 import { serialize as serializeVehicle, vehicleInclude } from './vehicles.js';
 import { computeCouponDiscount } from './coupons.js';
 import { notifyBookingReceived, notifyBookingConfirmed, type BookingNotice } from '../lib/notify.js';
+import { addOnsPerDay, PricingError, rentalDays, totals, DAY_MS } from '../lib/pricing.js';
 
 export const bookingsRouter = Router();
-
-const TAX_RATE = 0.05;
 
 /**
  * A booking with its vehicle resolved to the API vehicle contract, plus a
@@ -66,13 +65,15 @@ const schema = z.object({
   dropoffLocation: z.string(),
   pickupDate: z.string(),
   returnDate: z.string(),
-  extras: z.array(z.string()).default([]),
+  extras: z.array(z.string()).max(10).default([]),
   insurance: z.string().default('basic'),
-  extrasPerDay: z.number().default(0),
-  insurancePerDay: z.number().default(0),
-  name: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(1),
+  // Accepted for backward compatibility with older clients but IGNORED: add-on
+  // prices come from the server catalog in lib/pricing.ts.
+  extrasPerDay: z.number().optional(),
+  insurancePerDay: z.number().optional(),
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email(),
+  phone: z.string().trim().min(5).max(30),
   couponCode: z.string().optional(),
 });
 
@@ -89,6 +90,18 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
   if (Number.isNaN(pickup.getTime()) || Number.isNaN(ret.getTime()) || ret <= pickup) {
     return res.status(400).json({ error: 'Return date must be after the pickup date.' });
   }
+  // Allow same-day pickups (and small clock/time-zone skew), but not the past.
+  if (pickup.getTime() < Date.now() - DAY_MS) {
+    return res.status(400).json({ error: 'Pickup date cannot be in the past.' });
+  }
+
+  let addOns: ReturnType<typeof addOnsPerDay>;
+  try {
+    addOns = addOnsPerDay(b.extras, b.insurance);
+  } catch (e) {
+    if (e instanceof PricingError) return res.status(400).json({ error: e.message });
+    throw e;
+  }
 
   const vehicle = await prisma.vehicle.findUnique({ where: { id: b.vehicleId } });
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
@@ -99,8 +112,8 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
     return res.status(409).json({ error: 'This vehicle isn’t available for the selected dates (already booked or under maintenance).' });
   }
 
-  const days = Math.max(1, Math.round((ret.getTime() - pickup.getTime()) / 86400000) || 1);
-  const subtotal = (vehicle.pricePerDay + b.extrasPerDay + b.insurancePerDay) * days;
+  const days = rentalDays(pickup, ret);
+  const subtotal = (vehicle.pricePerDay + addOns.extrasPerDay + addOns.insurancePerDay) * days;
 
   // Re-validate the coupon server-side; the client-sent discount is never trusted.
   let discount = 0;
@@ -113,9 +126,7 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
     appliedCode = coupon!.code;
   }
 
-  const discountedSubtotal = Math.max(0, subtotal - discount);
-  const tax = Math.round(discountedSubtotal * TAX_RATE);
-  const total = discountedSubtotal + tax;
+  const { tax, total } = totals(subtotal, discount);
 
   // Create the booking and bump the coupon's usage atomically.
   const booking = await prisma.$transaction(async (tx) => {
@@ -130,7 +141,7 @@ bookingsRouter.post('/', optionalAuthenticate, async (req, res) => {
         dropoffLocation: b.dropoffLocation,
         pickupDate: pickup,
         returnDate: ret,
-        extras: b.extras,
+        extras: addOns.extras,
         insurance: b.insurance,
         days,
         subtotal,

@@ -35,7 +35,7 @@ const plans = [
 export default function Pricing() {
   const { money } = useCurrency();
   const { t } = useI18n();
-  useSeo({ title: 'Pricing — Mideeye Motors', description: 'Simple, transparent car rental pricing. No hidden fees.' });
+  useSeo({ title: 'Pricing — Daljir Rental Car', description: 'Simple, transparent car rental pricing. No hidden fees.' });
   return (
     <div className="bg-mist-100">
       <PageHeader crumb={t('nav.pricing')} title="Simple, transparent pricing" subtitle="No hidden fees. Choose the plan that fits your journey." />

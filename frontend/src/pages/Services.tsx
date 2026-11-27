@@ -15,7 +15,7 @@ const services = [
 export default function Services() {
   return (
     <div className="bg-mist-100">
-      <PageHeader crumb="Services" title="Everything you need to move" subtitle="From a weekend getaway to a corporate fleet, Mideeye Motors has you covered." />
+      <PageHeader crumb="Services" title="Everything you need to move" subtitle="From a weekend getaway to a corporate fleet, Daljir Rental Car has you covered." />
       <div className="mx-auto max-w-[1360px] px-5 py-20 lg:px-8">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s, i) => (

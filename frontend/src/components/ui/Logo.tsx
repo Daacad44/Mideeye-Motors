@@ -21,7 +21,7 @@ function hiDpiSrc(url: string, height: number): string {
 }
 
 /**
- * Renders the OFFICIAL Mideeye Motors logo PNG (from ImageKit via the branding
+ * Renders the OFFICIAL Daljir Rental Car logo PNG (from ImageKit via the branding
  * API). There is intentionally NO text/CSS/SVG recreation — if no logo has been
  * uploaded yet we reserve space with a transparent placeholder at the logo's
  * aspect ratio rather than substituting a fake wordmark.
@@ -57,7 +57,7 @@ export function Logo({
       {showImage ? (
         <img
           src={hiDpiSrc(url, height)}
-          alt="Mideeye Motors & Rental Car Co."
+          alt="Daljir Rental Car"
           width={reservedWidth}
           height={height}
           style={{ height, maxHeight: height, width: 'auto' }}
@@ -69,7 +69,7 @@ export function Logo({
       ) : (
         // Reserve space at the logo's ratio so layout never shifts on load.
         <span
-          aria-label="Mideeye Motors & Rental Car Co."
+          aria-label="Daljir Rental Car"
           role="img"
           style={{ height, width: reservedWidth }}
           className="inline-block"

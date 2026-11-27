@@ -18,7 +18,7 @@ export interface MediaUsage {
 export interface MediaImage {
   id: string;
   fileId: string; // ImageKit-issued file ID
-  filePath: string; // e.g. /mideeye-motors/vehicles/front.jpg
+  filePath: string; // e.g. /daljir/vehicles/front.jpg
   url: string; // base delivery URL, no transform params
   thumbnailUrl: string | null;
   width: number | null;

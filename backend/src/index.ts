@@ -45,7 +45,7 @@ app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter);
 
 app.get('/api/health', (_req, res) =>
-  res.json({ status: 'ok', service: 'mideeye-motors-api', time: new Date().toISOString() }),
+  res.json({ status: 'ok', service: 'daljir-rental-api', time: new Date().toISOString() }),
 );
 
 app.use('/api/vehicles', vehiclesRouter);
@@ -99,5 +99,5 @@ if (!env.imagekit.configured) {
 }
 
 app.listen(env.port, () => {
-  console.log(`🚗 Mideeye Motors API running on http://localhost:${env.port}`);
+  console.log(`🚗 Daljir Rental Car API running on http://localhost:${env.port}`);
 });

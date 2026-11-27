@@ -1,14 +1,60 @@
 import 'dotenv/config';
 import { PrismaClient, Category, Transmission, FuelType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 
 const prisma = new PrismaClient();
 
-// Seed accounts are env-overridable per deployment; these are the defaults.
-const SUPER_ADMIN_EMAIL = process.env.SEED_SUPER_ADMIN_EMAIL || 'daacaddeveloper@gmail.com';
-const SUPER_ADMIN_PASSWORD = process.env.SEED_SUPER_ADMIN_PASSWORD || 'Daacad@44Xxv';
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@mideeyemotors.com';
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'admin1234';
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Seed accounts come ONLY from the environment; no password is ever stored in
+ * the repository. Existing accounts are never touched (passwords included), so
+ * re-running the seed on every boot is safe.
+ *
+ *  - In production, an account whose email/password env vars are missing is
+ *    simply skipped (with a warning).
+ *  - In development, a missing password is replaced by a random one that is
+ *    printed once, so a fresh local database still has a usable admin.
+ */
+function seedAccount(emailVar: string, passwordVar: string, devEmail: string) {
+  const email = process.env[emailVar]?.trim() || (isProduction ? '' : devEmail);
+  let password = process.env[passwordVar] ?? '';
+  let generated = false;
+  if (!password && !isProduction) {
+    password = randomBytes(12).toString('base64url');
+    generated = true;
+  }
+  if (!email || !password) {
+    console.warn(`⚠️  ${emailVar}/${passwordVar} not set, skipping this seed account.`);
+    return null;
+  }
+  if (password.length < 10) {
+    throw new Error(`${passwordVar} must be at least 10 characters.`);
+  }
+  return { email, password, generated };
+}
+
+async function upsertSeedUser(
+  account: { email: string; password: string; generated: boolean } | null,
+  name: string,
+  role: 'SUPER_ADMIN' | 'ADMIN',
+) {
+  if (!account) return;
+  const existing = await prisma.user.findUnique({ where: { email: account.email } });
+  if (existing) {
+    // Keep the existing password; only make sure the role is right.
+    if (role === 'SUPER_ADMIN' && existing.role !== 'SUPER_ADMIN') {
+      await prisma.user.update({ where: { id: existing.id }, data: { role, status: 'ACTIVE' } });
+    }
+    return;
+  }
+  await prisma.user.create({
+    data: { name, email: account.email, password: await bcrypt.hash(account.password, 12), role },
+  });
+  console.log(`👤 Created ${role} ${account.email}`);
+  if (account.generated) console.log(`   Generated dev password (shown once): ${account.password}`);
+}
 
 type Seed = {
   title: string;
@@ -110,30 +156,19 @@ const data: Seed[] = [
 ];
 
 async function main() {
-  console.log('🌱 Seeding Mideeye Motors…');
+  console.log('🌱 Seeding Daljir Rental Car…');
 
-  // Default Super Admin — the only account that can manage other admins.
-  await prisma.user.upsert({
-    where: { email: SUPER_ADMIN_EMAIL },
-    update: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
-    create: {
-      name: 'Daacad (Super Admin)',
-      email: SUPER_ADMIN_EMAIL,
-      password: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 12),
-      role: 'SUPER_ADMIN',
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: ADMIN_EMAIL },
-    update: {},
-    create: {
-      name: 'Mideeye Admin',
-      email: ADMIN_EMAIL,
-      password: await bcrypt.hash(ADMIN_PASSWORD, 12),
-      role: 'ADMIN',
-    },
-  });
+  // Super Admin: the only account that can manage other admins.
+  await upsertSeedUser(
+    seedAccount('SEED_SUPER_ADMIN_EMAIL', 'SEED_SUPER_ADMIN_PASSWORD', 'superadmin@daljir.local'),
+    'Super Admin',
+    'SUPER_ADMIN',
+  );
+  await upsertSeedUser(
+    seedAccount('SEED_ADMIN_EMAIL', 'SEED_ADMIN_PASSWORD', 'admin@daljir.local'),
+    'Daljir Admin',
+    'ADMIN',
+  );
 
   // Site-wide branding — a single default row. Image fields (logo, favicon,
   // hero) start empty; an admin uploads the real assets via the Media
@@ -146,7 +181,7 @@ async function main() {
       id: 'default',
       primaryColor: '#0b67c2',
       phone: '+252 61 2345678',
-      email: 'hello@mideeyemotors.com',
+      email: 'hello@daljirrentalcar.com',
       socials: {},
     },
   });
@@ -157,18 +192,18 @@ async function main() {
   // placeholder image references are wiped rather than faked. An admin
   // uploads real photos via the Media Library, which populates these
   // fields automatically (no code change, no redeploy).
+  // Create-only: the seed runs on every container boot, so it must never
+  // overwrite prices, availability or text an admin has edited since.
   for (const v of data) {
     await prisma.vehicle.upsert({
       where: { slug: v.slug },
-      update: { ...v },
+      update: {},
       create: { ...v },
     });
     console.log(`  ✓ ${v.title}`);
   }
 
   console.log('✅ Seed complete.');
-  console.log(`   Super Admin: ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}`);
-  console.log(`   Admin:       ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
   console.log('   Vehicle images are empty — upload real photos via the Admin Media Library.');
 }
 

@@ -11,7 +11,7 @@ import { cacheInvalidate } from '../lib/redis.js';
 export const adminMediaRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
-const DEFAULT_FOLDER = '/mideeye-motors/media';
+const DEFAULT_FOLDER = '/daljir/media';
 
 /** Format an ImageKit failure into a single, clean client-facing message. */
 function ikErrorMessage(e: unknown): string {

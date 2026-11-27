@@ -5,7 +5,7 @@ import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 
 const info = [
   { icon: Phone, label: 'Phone', value: '+252 61 2345678' },
-  { icon: Mail, label: 'Email', value: 'hello@mideeyemotors.com' },
+  { icon: Mail, label: 'Email', value: 'hello@daljirrentalcar.com' },
   { icon: MapPin, label: 'Address', value: 'Maka Al-Mukarama Rd, Mogadishu' },
   { icon: Clock, label: 'Hours', value: 'Open 24/7' },
 ];
@@ -34,7 +34,7 @@ export default function Contact() {
             ))}
             <div className="overflow-hidden rounded-2xl border border-line">
               <iframe
-                title="Mideeye Motors location"
+                title="Daljir Rental Car location"
                 src="https://www.openstreetmap.org/export/embed.html?bbox=45.30%2C2.02%2C45.38%2C2.08&layer=mapnik"
                 className="h-52 w-full"
                 loading="lazy"

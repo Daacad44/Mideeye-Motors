@@ -1,8 +1,8 @@
-# 🚗 Mideeye Motors & Rental Car Co.
+# 🚗 Daljir Rental Car
 
 A premium, enterprise-grade luxury car-rental platform. Apple-level design, Tesla/BMW-inspired UI, and a fully dynamic **ImageKit-driven** image pipeline where the frontend reflects any image change with **zero code edits**.
 
-> Full redesign of the Mideeye Motors experience — hero, fleet, vehicle details, booking flow, user & admin dashboards — built as a real full-stack monorepo.
+> The Daljir Rental Car experience — hero, fleet, vehicle details, booking flow, user & admin dashboards — built as a real full-stack monorepo.
 
 ---
 
@@ -36,7 +36,7 @@ A premium, enterprise-grade luxury car-rental platform. Apple-level design, Tesl
 ## 📁 Structure
 
 ```
-mideeye-motors/
+daljir-rental-car/
 ├── frontend/                    # React 19 + Vite SPA
 │   ├── src/
 │   │   ├── lib/imagekitImages.ts # ⭐ dynamic URL builder (the core image engine)
@@ -121,11 +121,18 @@ npm run dev               # http://localhost:5173
 The frontend works **without** the backend too — it falls back to the bundled seed fleet, so the UI always renders for previews.
 
 ### Seeded accounts
-```
-Super Admin  daacaddeveloper@gmail.com  /  Daacad@44Xxv
-Admin        admin@mideeyemotors.com    /  admin1234
-```
-Both are env-overridable per deployment (`SEED_SUPER_ADMIN_EMAIL/PASSWORD`, `SEED_ADMIN_EMAIL/PASSWORD`). Passwords are hashed with bcrypt (cost 12). Sign in at `/login`, then `/admin`
+No credentials live in this repository. The seed creates the first admin
+accounts from `SEED_SUPER_ADMIN_EMAIL/PASSWORD` and `SEED_ADMIN_EMAIL/PASSWORD`
+(passwords at least 10 characters), only if those accounts don't exist yet;
+existing accounts are never modified.
+
+- **Production:** set the four variables in Coolify before the first deploy. If
+  they're missing, that account is skipped with a warning.
+- **Development:** with no password set, the seed creates
+  `superadmin@daljir.local` / `admin@daljir.local` with a random password
+  printed once in the terminal.
+
+Passwords are hashed with bcrypt (cost 12). Sign in at `/login`, then `/admin`
 opens the tabbed dashboard (Media Library · Fleet · Team & Roles · Audit Log).
 `/dashboard` is the renter view.
 
@@ -183,11 +190,11 @@ This codebase originally used Cloudinary, briefly used Cloudflare Images, and no
 
 ## 🖼️ Official logo policy
 
-The official Mideeye Motors logo is **never** recreated, vectorized, drawn in
+The official Daljir Rental Car logo is **never** recreated, vectorized, drawn in
 CSS/SVG, or replaced with text. The `Logo` component renders **only** the real
 PNG, resolved dynamically:
 
-1. **Upload once** via the Admin Media Manager into the **`/mideeye-motors/brand`**
+1. **Upload once** via the Admin Media Manager into the **`/daljir/brand`**
    folder (there's a one-click "🏷️ brand" preset on the dropzone).
 2. **PATCH `/api/branding`** with `{ logoImageId: <MediaImage id> }` to set it as the site logo.
 3. The public **`GET /api/branding`** endpoint returns the resolved delivery URL; the frontend
@@ -225,6 +232,14 @@ remove both the ImageKit asset and the DB row (no orphans).
   file validation (PNG/JPEG/GIF/WebP only — SVG rejected to avoid stored-XSS), 20MB upload cap.
 - **Audit log** — every privileged action (media upload/replace/delete, user
   create/suspend/role-change, password reset, branding update) is recorded with actor + IP.
+- **Payments** — `POST /api/payments` only accepts a payment from staff, the
+  signed-in owner of the booking, or a guest who presents the booking
+  reference. Amounts always come from the booking total. A booking that is
+  already paid, awaiting verification, cancelled or completed can't be paid
+  again. The `mock` (instant test) provider is **off in production** unless
+  `PAYMENTS_ALLOW_MOCK=true`, and the checkout only shows it when it's on.
+- **Pricing** — booking totals, extras and insurance are computed on the
+  server from `backend/src/lib/pricing.ts`; prices sent by the client are ignored.
 - **Credentials never reach the frontend** — `IMAGEKIT_PRIVATE_KEY` is server-side only; the browser only ever sees `VITE_IMAGEKIT_PUBLIC_KEY` + `VITE_IMAGEKIT_URL_ENDPOINT`.
 
 ---
@@ -237,7 +252,12 @@ reverse-proxies `/api` → the internal `api` service, and the SPA is built with
 wrong-host failures — the browser only ever talks to the web domain.
 
 1. Create a **Docker Compose** resource pointing at this repo's `docker-compose.yml`.
-2. Set env vars in Coolify: `POSTGRES_*`, `JWT_SECRET`, `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT`.
+2. Set env vars in Coolify: `POSTGRES_PASSWORD` (required), `JWT_SECRET` (required, 32+ random chars:
+   `openssl rand -hex 32`), `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT`,
+   `FRONTEND_URL`, and the `SEED_*` admin accounts. Optional: `SMTP_*` for email, `SMS_PROVIDER=twilio`
+   + `TWILIO_*` for SMS. The API refuses to start in production without a strong `JWT_SECRET`.
+   **Upgrading an existing Mideeye deployment?** Postgres keeps the user/database it was created
+   with, so also set `POSTGRES_USER=mideeye` and `POSTGRES_DB=mideeye` (and your current password).
    You do **not** need to set `VITE_API_URL` (defaults to `/api`) or `CORS_ORIGIN`
    (defaults to reflect) for the single-compose deploy.
 3. Expose only the **web** service's port 80 to your domain; the `api` service
@@ -253,7 +273,7 @@ wrong-host failures — the browser only ever talks to the web domain.
 
 ### Login shows "cannot reach the server" or 500? Check, in order:
 1. Is the **api** container running (not crash-looping)? `docker logs` — it must
-   print `🚗 Mideeye Motors API running` and the `[boot] …` lines showing migrate/seed succeeded.
+   print `🚗 Daljir Rental Car API running` and the `[boot] …` lines showing migrate/seed succeeded.
 2. `curl https://<your-domain>/api/health` → `{"status":"ok"}`. If this returns
    HTML, the nginx `/api` proxy isn't active (rebuild the web image).
 3. `DATABASE_URL` valid and the `db` service healthy; migrations actually applied (`npx prisma migrate status`).
@@ -270,4 +290,4 @@ wrong-host failures — the browser only ever talks to the web domain.
 
 ---
 
-_© Mideeye Motors & Rental Car Co. — designed for the road ahead._
+_© Daljir Rental Car — designed for the road ahead._

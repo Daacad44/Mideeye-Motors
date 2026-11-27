@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-32x32.png', 'apple-touch-icon.png', 'icon.svg', 'robots.txt', 'sitemap.xml'],
       manifest: {
-        name: 'Mideeye Motors & Rental Car Co.',
-        short_name: 'Mideeye Motors',
+        name: 'Daljir Rental Car',
+        short_name: 'Daljir',
         description: 'Premium car rental in Somalia — book SUVs, sedans and the legendary Land Cruiser.',
         lang: 'so',
         theme_color: '#061423',

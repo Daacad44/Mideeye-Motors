@@ -17,7 +17,7 @@ export default function Privacy() {
             {t('legal.lastUpdated')}: {UPDATED}
           </p>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-500">
-            This Privacy Policy explains how Mideeye Motors &amp; Rental Car Co. collects, uses, and protects your
+            This Privacy Policy explains how Daljir Rental Car collects, uses, and protects your
             personal information when you use our website and rental services.
           </p>
 
@@ -53,7 +53,7 @@ export default function Privacy() {
 
           <Section title="Contact">
             For any privacy question or request, email{' '}
-            <a href="mailto:hello@mideeyemotors.com" className="font-bold text-brand-600 hover:underline">hello@mideeyemotors.com</a>{' '}
+            <a href="mailto:hello@daljirrentalcar.com" className="font-bold text-brand-600 hover:underline">hello@daljirrentalcar.com</a>{' '}
             or call +252 61 2345678.
           </Section>
         </article>

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# Mideeye Motors — full stack (Coolify-ready)
+# Daljir Rental Car — full stack (Coolify-ready)
 # Postgres + Redis + API + Web
 # ─────────────────────────────────────────────────────────────
 services:
@@ -7,13 +7,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-mideeye}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mideeye}
-      POSTGRES_DB: ${POSTGRES_DB:-mideeye}
+      POSTGRES_USER: ${POSTGRES_USER:-daljir}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-daljir}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-mideeye}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-daljir}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,19 +35,33 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mideeye}:${POSTGRES_PASSWORD:-mideeye}@db:5432/${POSTGRES_DB:-mideeye}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-daljir}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-daljir}?schema=public
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (openssl rand -hex 32)}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       # Same-origin via the nginx /api proxy → reflect origin (also fine cross-origin).
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       IMAGEKIT_PUBLIC_KEY: ${IMAGEKIT_PUBLIC_KEY}
       IMAGEKIT_PRIVATE_KEY: ${IMAGEKIT_PRIVATE_KEY}
       IMAGEKIT_URL_ENDPOINT: ${IMAGEKIT_URL_ENDPOINT}
-      SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-daacaddeveloper@gmail.com}
-      SEED_SUPER_ADMIN_PASSWORD: ${SEED_SUPER_ADMIN_PASSWORD:-Daacad@44Xxv}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@mideeyemotors.com}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin1234}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      # SMTP / SMS / payments: all optional, see .env.example.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Daljir Rental Car <no-reply@daljirrentalcar.com>}
+      SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+      PAYMENTS_ALLOW_MOCK: ${PAYMENTS_ALLOW_MOCK:-false}
+      # First-boot admin accounts. No defaults: set them in Coolify. Existing
+      # accounts are never modified by the seed.
+      SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-}
+      SEED_SUPER_ADMIN_PASSWORD: ${SEED_SUPER_ADMIN_PASSWORD:-}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     expose:
       - '4000'
 

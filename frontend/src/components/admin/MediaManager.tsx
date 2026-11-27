@@ -30,7 +30,7 @@ export function MediaManager() {
   const [folder, setFolder] = useState('');
   const [sort, setSort] = useState<MediaSort>('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-  const [targetFolder, setTargetFolder] = useState('/mideeye-motors/media');
+  const [targetFolder, setTargetFolder] = useState('/daljir/media');
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState(false);
@@ -260,7 +260,7 @@ export function MediaManager() {
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-          {['/mideeye-motors/brand', '/mideeye-motors/media', '/mideeye-motors/banner'].map((f) => (
+          {['/daljir/brand', '/daljir/media', '/daljir/banner'].map((f) => (
             <button key={f} type="button" onClick={() => setTargetFolder(f)}
               className={'rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors ' +
                 (targetFolder === f ? 'bg-brand-600 text-white' : 'bg-mist-200 text-navy-700 hover:bg-brand-100')}>

@@ -119,7 +119,7 @@ export default function Login() {
                 </span>
               ))}
             </div>
-            <p className="text-[13px] text-brand-100/50">© {new Date().getFullYear()} Mideeye Motors & Rental Car Co.</p>
+            <p className="text-[13px] text-brand-100/50">© {new Date().getFullYear()} Daljir Rental Car</p>
           </div>
         </div>
       </div>

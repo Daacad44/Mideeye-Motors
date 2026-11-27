@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /dashboard
 
-Sitemap: https://mideeyemotors.com/sitemap.xml
+Sitemap: https://daljirrentalcar.com/sitemap.xml
