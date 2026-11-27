@@ -6,23 +6,24 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'dark' | 'outline-light';
 type Size = 'sm' | 'md' | 'lg';
 
 const base =
-  'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-300 whitespace-nowrap select-none active:scale-[.97] disabled:opacity-50 disabled:pointer-events-none';
+  'inline-flex items-center justify-center gap-2 font-bold rounded-[14px] transition-all duration-200 whitespace-nowrap select-none cursor-pointer active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none';
 
+// One accent: Daljir red for the primary action, quiet outlines elsewhere.
 const variants: Record<Variant, string> = {
   primary:
-    'bg-amber-500 text-white shadow-[var(--shadow-glow-amber)] hover:bg-amber-600 hover:-translate-y-0.5',
+    'bg-brand-600 text-white hover:bg-brand-hover hover:shadow-[var(--shadow-glow-brand)]',
   secondary:
-    'bg-brand-600 text-white shadow-[var(--shadow-glow-brand)] hover:bg-navy-700 hover:-translate-y-0.5',
-  ghost: 'text-navy-700 hover:bg-brand-100',
-  dark: 'bg-navy-900 text-white hover:bg-navy-950 hover:-translate-y-0.5',
+    'bg-brand-600 text-white hover:bg-brand-hover hover:shadow-[var(--shadow-glow-brand)]',
+  ghost: 'text-ink-700 hover:bg-white/5 hover:text-white',
+  dark: 'bg-navy-950 text-white border border-white/10 hover:bg-elevated',
   'outline-light':
-    'border border-white/25 text-white glass hover:bg-white/20',
+    'border border-white/16 text-white hover:bg-white/8',
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'px-4 py-2 text-sm',
-  md: 'px-6 py-3 text-[15px]',
-  lg: 'px-8 py-4 text-base',
+  sm: 'min-h-10 px-4 py-2 text-sm',
+  md: 'min-h-12 px-6 py-3 text-[15px]',
+  lg: 'min-h-14 px-7 py-4 text-base',
 };
 
 type CommonProps = {

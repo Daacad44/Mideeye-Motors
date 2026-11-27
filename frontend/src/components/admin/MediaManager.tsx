@@ -196,7 +196,7 @@ export function MediaManager() {
     <div>
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2.5">
+        <label className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2.5">
           <Search className="size-4 text-ink-400" />
           <input
             value={search}
@@ -205,7 +205,7 @@ export function MediaManager() {
             className="w-full bg-transparent text-sm font-medium text-navy-700 focus:outline-none"
           />
         </label>
-        <div className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2.5">
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5">
           <FolderOpen className="size-4 text-ink-400" />
           <select
             value={folder}
@@ -218,7 +218,7 @@ export function MediaManager() {
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2.5">
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5">
           <ArrowUpDown className="size-4 text-ink-400" />
           <select
             value={sort}
@@ -242,10 +242,10 @@ export function MediaManager() {
         onDrop={onDrop}
         className={
           'mt-4 rounded-3xl border-2 border-dashed p-8 text-center transition-colors ' +
-          (dragOver ? 'border-brand-500 bg-brand-100/50' : 'border-line bg-mist-100')
+          (dragOver ? 'border-brand-500 bg-brand-600/10' : 'border-line bg-mist-100')
         }
       >
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600">
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-600/12 text-brand-600">
           {progress !== null ? <Loader2 className="size-7 animate-spin" /> : <UploadCloud className="size-7" />}
         </div>
         <p className="mt-3 font-bold text-navy-700">
@@ -256,14 +256,14 @@ export function MediaManager() {
           <input
             value={targetFolder}
             onChange={(e) => setTargetFolder(e.target.value)}
-            className="rounded-lg border border-line bg-white px-2 py-1 font-mono text-[12px] text-navy-700 focus:border-brand-400 focus:outline-none"
+            className="rounded-lg border border-line bg-surface px-2 py-1 font-mono text-[12px] text-navy-700 focus:border-brand-400 focus:outline-none"
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           {['/daljir/brand', '/daljir/media', '/daljir/banner'].map((f) => (
             <button key={f} type="button" onClick={() => setTargetFolder(f)}
               className={'rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors ' +
-                (targetFolder === f ? 'bg-brand-600 text-white' : 'bg-mist-200 text-navy-700 hover:bg-brand-100')}>
+                (targetFolder === f ? 'bg-brand-600 text-white' : 'bg-mist-200 text-navy-700 hover:bg-white/5')}>
               {f.split('/')[2] === 'brand' ? '🏷️ brand (official logo)' : f.split('/')[2]}
             </button>
           ))}
@@ -275,7 +275,7 @@ export function MediaManager() {
         )}
         <button
           onClick={() => fileInput.current?.click()}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-navy-700"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover"
         >
           <UploadCloud className="size-4" /> Select images
         </button>
@@ -284,13 +284,13 @@ export function MediaManager() {
       </div>
 
       {error && (
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">
           <X className="size-4 shrink-0" /> {error}
         </div>
       )}
 
       {confirmDelete && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13.5px] text-amber-700">
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-500/10 px-4 py-3 text-[13.5px] text-amber-300">
           <div className="flex items-start gap-2">
             <ShieldAlert className="size-4 shrink-0 mt-0.5" />
             <div>
@@ -303,7 +303,7 @@ export function MediaManager() {
                 >
                   Delete anyway
                 </button>
-                <button onClick={() => setConfirmDelete(null)} className="rounded-lg border border-amber-300 px-3 py-1.5 text-[12px] font-bold text-amber-700">
+                <button onClick={() => setConfirmDelete(null)} className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-[12px] font-bold text-amber-300">
                   Cancel
                 </button>
               </div>
@@ -332,7 +332,7 @@ export function MediaManager() {
             {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-56 rounded-2xl" />)}
           </div>
         ) : assets.length === 0 ? (
-          <div className="rounded-3xl border border-line bg-white py-20 text-center">
+          <div className="rounded-3xl border border-line bg-surface py-20 text-center">
             <ImageIcon className="mx-auto size-10 text-ink-400" />
             <p className="mt-3 font-display text-lg font-bold text-navy-700">No media yet</p>
             <p className="mt-1 text-ink-400">Upload images above — they’ll be stored in ImageKit and appear here.</p>
@@ -340,12 +340,12 @@ export function MediaManager() {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {assets.map((a) => (
-              <div key={a.id} className={'group overflow-hidden rounded-2xl border bg-white transition ' + (selected.has(a.id) ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-line')}>
+              <div key={a.id} className={'group overflow-hidden rounded-2xl border bg-surface transition ' + (selected.has(a.id) ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-line')}>
                 <div className="relative aspect-[4/3] bg-mist-200">
                   <img src={ik(a.filePath, 'thumb')} alt={a.altText || baseName(a.filePath)} loading="lazy"
                     className="h-full w-full object-cover"
                     onError={(e) => (e.currentTarget.style.opacity = '0.15')} />
-                  <label className="absolute left-2 top-2 grid size-6 cursor-pointer place-items-center rounded-md bg-white/90 shadow">
+                  <label className="absolute left-2 top-2 grid size-6 cursor-pointer place-items-center rounded-md bg-navy-950/75 shadow">
                     <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggle(a.id)} className="accent-brand-600" />
                   </label>
                   {a.inUse && (

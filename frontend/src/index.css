@@ -2,43 +2,61 @@
 
 /* ─────────────────────────────────────────────────────────────
    Daljir Rental Car — Design System (Tailwind v4 theme tokens)
-   Brand: deep navy + electric blue + signature amber.
+   Cinematic dark: near-black surfaces, one accent (Daljir red),
+   Outfit display type + Inter body. Mirrors the approved design.
+
+   The legacy token names (navy / brand / ink / mist / line) are kept so
+   every screen picks up the dark theme; their values are remapped:
+     navy-950…800 → background layers      navy-700 → heading text
+     brand-*      → Daljir red scale        brand-100 → light text tint
+     ink-*        → body / muted text       mist-*    → inset surfaces
    ───────────────────────────────────────────────────────────── */
 @theme {
-  --font-display: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand — blues */
-  --color-navy-950: #061423;
-  --color-navy-900: #08182f;
-  --color-navy-800: #0d2b50;
-  --color-navy-700: #143a68;
-  --color-brand-600: #0b67c2;
-  --color-brand-500: #18a8f5;
-  --color-brand-400: #4fbdf9;
-  --color-brand-300: #7cc9ff;
-  --color-brand-100: #eaf3fc;
+  /* Surfaces */
+  --color-bg: #07090c;
+  --color-surface: #0e1218;
+  --color-elevated: #151a22;
+  --color-inset: #0b0e13;
 
-  /* Signature amber */
-  --color-amber-600: #d97c06;
+  --color-navy-950: #05070a;
+  --color-navy-900: #07090c;
+  --color-navy-800: #151a22;
+  --color-navy-700: #f3f5f8;
+
+  /* Daljir red */
+  --color-brand-700: #b80f22;
+  --color-brand-600: #e5142b;
+  --color-brand-500: #ff3b4e;
+  --color-brand-400: #ff4d5e;
+  --color-brand-300: #ff8a95;
+  --color-brand-100: #e6e9ee;
+  --color-brand-hover: #ff2a40;
+
+  /* Status (amber kept for ratings + warnings) */
+  --color-amber-600: #d97706;
   --color-amber-500: #f59e0b;
   --color-amber-400: #fbbf24;
 
-  /* Neutrals */
-  --color-ink-900: #0f1b2d;
-  --color-ink-700: #1e293b;
-  --color-ink-500: #5a6b82;
-  --color-ink-400: #7a8aa0;
-  --color-mist-100: #f7f9fc;
-  --color-mist-200: #eef4fb;
-  --color-line: #e6edf5;
+  /* Text */
+  --color-ink-900: #f3f5f8;
+  --color-ink-700: #d5dae1;
+  --color-ink-500: #b6bec9;
+  --color-ink-400: #9aa4b2;
+
+  /* Inset surfaces + hairlines */
+  --color-mist-100: #0b0e13;
+  --color-mist-200: #151a22;
+  --color-line: rgb(255 255 255 / 0.09);
 
   --radius-xl2: 1.4rem;
 
-  --shadow-glow-amber: 0 14px 32px rgba(245, 158, 11, 0.36);
-  --shadow-glow-brand: 0 14px 34px rgba(11, 103, 194, 0.28);
-  --shadow-soft: 0 8px 30px rgba(13, 39, 73, 0.08);
-  --shadow-lift: 0 24px 60px rgba(13, 39, 73, 0.16);
+  --shadow-glow-amber: 0 12px 30px rgba(229, 20, 43, 0.32);
+  --shadow-glow-brand: 0 12px 30px rgba(229, 20, 43, 0.32);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 30px 80px rgba(0, 0, 0, 0.5);
 
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 }
@@ -50,54 +68,70 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
   }
   body {
     margin: 0;
     font-family: var(--font-sans);
     color: var(--color-ink-700);
-    background: var(--color-mist-100);
+    background: var(--color-bg);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5 {
     font-family: var(--font-display);
-    color: var(--color-navy-700);
+    color: var(--color-ink-900);
     letter-spacing: -0.02em;
     line-height: 1.05;
     margin: 0;
   }
   ::selection {
-    background: var(--color-brand-500);
+    background: var(--color-brand-600);
     color: #fff;
   }
   :focus-visible {
-    outline: 2px solid var(--color-brand-500);
+    outline: 2px solid var(--color-brand-400);
     outline-offset: 2px;
     border-radius: 4px;
+  }
+  input, select, textarea {
+    color-scheme: dark;
   }
 }
 
 /* Utilities */
 .text-gradient {
-  background: linear-gradient(92deg, var(--color-brand-500), var(--color-brand-300));
+  background: linear-gradient(92deg, var(--color-brand-600), var(--color-brand-400));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(14, 18, 24, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .glass-light {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(14, 18, 24, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+/* Poster-style display heading */
+.poster {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.96;
+}
+/* Red glow under a car photo */
+.red-glow {
+  background: radial-gradient(60% 55% at 50% 78%, rgba(229, 20, 43, 0.2), transparent 70%);
 }
 .dotted-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 26px 26px;
 }
 .no-scrollbar::-webkit-scrollbar {
@@ -122,14 +156,14 @@
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #e8eef6;
+  background: #151a22;
 }
 .skeleton::after {
   content: '';
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
   animation: shimmer 1.4s infinite;
 }
 

@@ -16,7 +16,7 @@ export default function ResetPassword() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
-  const field = 'w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+  const field = 'w-full rounded-xl border border-line bg-surface py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +42,7 @@ export default function ResetPassword() {
           <ArrowLeft className="size-4" /> Back to sign in
         </Link>
 
-        <div className="rounded-3xl border border-line bg-white p-8 shadow-[var(--shadow-soft)]">
+        <div className="rounded-3xl border border-line bg-surface p-8 shadow-[var(--shadow-soft)]">
           <div className="mb-6 flex justify-center"><Logo height={52} /></div>
 
           {done ? (
@@ -54,7 +54,7 @@ export default function ResetPassword() {
             </div>
           ) : !token ? (
             <div className="text-center">
-              <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600"><KeyRound className="size-7" /></span>
+              <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-600/12 text-brand-600"><KeyRound className="size-7" /></span>
               <h1 className="mt-4 font-display text-2xl font-extrabold text-navy-700">Invalid reset link</h1>
               <p className="mt-2 text-ink-500">This link is missing its token. Request a new one from the sign-in page.</p>
               <Link to="/login" className="mt-5 inline-block font-bold text-brand-600 hover:underline">Back to sign in</Link>
@@ -74,7 +74,7 @@ export default function ResetPassword() {
                   <input type="password" className={field} placeholder="Confirm new password" required value={confirm}
                     onChange={(e) => setConfirm(e.target.value)} />
                 </div>
-                {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-[13.5px] font-medium text-red-600">{error}</p>}
+                {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[13.5px] font-medium text-red-400">{error}</p>}
                 <Button type="submit" size="lg" variant="secondary" className="w-full" disabled={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : 'Update password'}
                 </Button>

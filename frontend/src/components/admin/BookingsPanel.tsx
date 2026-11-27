@@ -9,17 +9,17 @@ import { formatCurrency } from '@/lib/cn';
 const STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
 
 const statusBadge: Record<BookingStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-brand-100 text-brand-600',
-  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  PENDING: 'bg-amber-500/15 text-amber-300',
+  CONFIRMED: 'bg-blue-500/15 text-blue-300',
+  ACTIVE: 'bg-emerald-500/15 text-emerald-400',
   COMPLETED: 'bg-mist-200 text-ink-500',
-  CANCELLED: 'bg-red-100 text-red-600',
+  CANCELLED: 'bg-red-500/15 text-red-400',
 };
 
 const payBadge: Record<PaymentStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  PAID: 'bg-emerald-100 text-emerald-700',
-  FAILED: 'bg-red-100 text-red-600',
+  PENDING: 'bg-amber-500/15 text-amber-300',
+  PAID: 'bg-emerald-500/15 text-emerald-400',
+  FAILED: 'bg-red-500/15 text-red-400',
   REFUNDED: 'bg-mist-200 text-ink-500',
 };
 
@@ -81,7 +81,7 @@ export function BookingsPanel() {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+          <div key={k.label} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
             <k.icon className="size-6 text-brand-500" />
             <div className="mt-3 font-display text-3xl font-extrabold text-navy-700">{k.value}</div>
             <div className="text-[13px] text-ink-400">{k.label}</div>
@@ -89,9 +89,9 @@ export function BookingsPanel() {
         ))}
       </div>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
-      <div className="overflow-hidden rounded-3xl border border-line bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-4">
           <h3 className="font-display text-lg font-bold text-navy-700">All bookings</h3>
           <div className="flex items-center gap-2">
@@ -157,6 +157,14 @@ export function BookingsPanel() {
                           <span className={'inline-block rounded-lg px-2 py-1 text-[12px] font-bold ' + (b.paymentStatus ? payBadge[b.paymentStatus] : 'bg-mist-200 text-ink-400')}>
                             {b.paymentStatus ?? 'UNPAID'}
                           </span>
+                          {b.payments?.[0] && (
+                            <div className="text-[12px] text-ink-400">
+                              {b.payments[0].provider === 'waafipay' ? 'WaafiPay' : b.payments[0].provider}
+                              {b.payments[0].payerPhone ? ` · +${b.payments[0].payerPhone}` : ''}
+                              {b.payments[0].status === 'PAID' && b.payments[0].reference ? ` · ${b.payments[0].reference}` : ''}
+                              {b.payments[0].status === 'FAILED' && b.payments[0].failureReason ? ` · ${b.payments[0].failureReason.replace(/_/g, ' ')}` : ''}
+                            </div>
+                          )}
                           {pending && (
                             <button
                               onClick={() => verifyPayment(pending.id)}

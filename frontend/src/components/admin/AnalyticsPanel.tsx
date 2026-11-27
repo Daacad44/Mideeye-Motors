@@ -68,20 +68,20 @@ export function AnalyticsPanel() {
   const toISO = to.toISOString();
 
   const colors = useMemo(() => ({
-    brand600: cssVar('--color-brand-600', '#0b67c2'),
-    brand500: cssVar('--color-brand-500', '#18a8f5'),
-    brand300: cssVar('--color-brand-300', '#7cc9ff'),
+    brand600: cssVar('--color-brand-600', '#e5142b'),
+    brand500: cssVar('--color-brand-500', '#ff3b4e'),
+    brand300: cssVar('--color-brand-300', '#ff8a95'),
     amber500: cssVar('--color-amber-500', '#f59e0b'),
-    navy700: cssVar('--color-navy-700', '#143a68'),
-    line: cssVar('--color-line', '#e6edf5'),
-    ink400: cssVar('--color-ink-400', '#7a8aa0'),
+    navy700: cssVar('--color-navy-700', '#f3f5f8'),
+    line: cssVar('--color-line', 'rgba(255,255,255,.09)'),
+    ink400: cssVar('--color-ink-400', '#9aa4b2'),
   }), []);
 
   const statusColors: Record<string, string> = {
     PENDING: colors.amber500,
-    CONFIRMED: colors.brand600,
-    ACTIVE: colors.brand500,
-    COMPLETED: colors.brand300,
+    CONFIRMED: '#3b82f6',
+    ACTIVE: colors.brand600,
+    COMPLETED: '#22c55e',
     CANCELLED: colors.ink400,
   };
 
@@ -128,7 +128,7 @@ export function AnalyticsPanel() {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-white p-1">
+        <div className="flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
           {PRESETS.map((p) => (
             <button key={p.id} onClick={() => setPreset(p.id)}
               className={'rounded-lg px-3 py-1.5 text-[13px] font-bold transition-colors ' + (preset === p.id ? 'bg-brand-600 text-white' : 'text-ink-500 hover:bg-mist-200')}>
@@ -146,26 +146,26 @@ export function AnalyticsPanel() {
           </div>
         )}
         <div className="ml-auto flex gap-2">
-          <button onClick={exportBookings} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
+          <button onClick={exportBookings} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
             <Download className="size-4" /> Bookings CSV
           </button>
-          <button onClick={exportRevenue} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
+          <button onClick={exportRevenue} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] font-bold text-navy-700 hover:border-brand-400 hover:text-brand-600">
             <Download className="size-4" /> Revenue CSV
           </button>
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {loading && !summary
-          ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-[116px] animate-pulse rounded-3xl border border-line bg-white" />)
+          ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-[116px] animate-pulse rounded-3xl border border-line bg-surface" />)
           : kpis.map((k) => <Kpi key={k.label} {...k} />)}
       </div>
 
       {/* Revenue over time */}
-      <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+      <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-display text-lg font-bold text-navy-700">Revenue over time</h3>
           <div className="flex gap-1 rounded-lg border border-line p-0.5">
@@ -202,7 +202,7 @@ export function AnalyticsPanel() {
 
       {/* Top vehicles + status donut */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
           <h3 className="mb-4 font-display text-lg font-bold text-navy-700">Top vehicles by revenue</h3>
           {loading ? (
             <div className="h-[280px] animate-pulse rounded-2xl bg-mist-100" />
@@ -220,7 +220,7 @@ export function AnalyticsPanel() {
           )}
         </div>
 
-        <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
           <h3 className="mb-4 font-display text-lg font-bold text-navy-700">Bookings by status</h3>
           {loading ? (
             <div className="h-[260px] animate-pulse rounded-2xl bg-mist-100" />
@@ -246,11 +246,11 @@ export function AnalyticsPanel() {
 function Kpi({ icon: Icon, label, value, delta }: { icon: React.ElementType; label: string; value: string; delta: number | null }) {
   const up = delta != null && delta >= 0;
   return (
-    <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+    <div className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between">
         <Icon className="size-6 text-brand-500" />
         {delta != null && (
-          <span className={'inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[12px] font-bold ' + (up ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+          <span className={'inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[12px] font-bold ' + (up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
             {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />} {Math.abs(delta)}%
           </span>
         )}

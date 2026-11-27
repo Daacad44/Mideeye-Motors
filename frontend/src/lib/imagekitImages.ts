@@ -36,9 +36,16 @@ export const PRESET_WIDTH: Record<Preset, number> = {
 const URL_ENDPOINT =
   (import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT as string | undefined) || '';
 
+/** True for bundled static images and absolute URLs (no ImageKit transform). */
+export const isDirectSrc = (p: string) => p.startsWith('/images/') || /^https?:\/\//.test(p);
+
 /** Build an ImageKit delivery URL for a stored filePath + named preset. */
 export function ik(filePath: string | undefined | null, preset: Preset = 'card'): string {
-  if (!filePath || !URL_ENDPOINT) return '';
+  if (!filePath) return '';
+  // Bundled photos (public/images/…) and absolute URLs are served as-is, so a
+  // vehicle can ship with real photos before anything is uploaded to ImageKit.
+  if (isDirectSrc(filePath)) return filePath;
+  if (!URL_ENDPOINT) return '';
   const base = `${URL_ENDPOINT.replace(/\/+$/, '')}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
   const tr = PRESET_TR[preset];
   return tr ? `${base}?tr=${tr}` : base;
@@ -49,7 +56,7 @@ export function ik(filePath: string | undefined | null, preset: Preset = 'card')
  * browser pick the smallest sufficient size. All presets share one filePath.
  */
 export function ikSrcSet(filePath: string | undefined | null, presets: Preset[]): string {
-  if (!filePath || !URL_ENDPOINT) return '';
+  if (!filePath || !URL_ENDPOINT || isDirectSrc(filePath)) return '';
   return presets.map((p) => `${ik(filePath, p)} ${PRESET_WIDTH[p]}w`).join(', ');
 }
 

@@ -50,7 +50,7 @@ export default function Login() {
   };
 
   const field =
-    'w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 placeholder:text-ink-400 transition-colors duration-200 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100';
+    'w-full rounded-xl border border-line bg-surface py-3 pl-11 pr-4 text-[15px] font-medium text-navy-700 placeholder:text-ink-400 transition-colors duration-200 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-600/20';
 
   const heading = mode === 'login' ? t('auth.welcomeBack') : mode === 'register' ? t('auth.createAccount') : t('auth.resetTitle');
   const subtext =
@@ -72,11 +72,11 @@ export default function Login() {
   return (
     <div className="relative grid min-h-[calc(100vh-72px)] lg:grid-cols-2">
       {/* Visual side */}
-      <div className="relative hidden overflow-hidden bg-[linear-gradient(150deg,#061423,#0d2b50_60%,#0b67c2)] lg:block">
+      <div className="relative hidden overflow-hidden bg-[radial-gradient(900px_420px_at_70%_80%,rgba(229,20,43,.22),transparent_70%),linear-gradient(180deg,#0e1218,#07090c)] lg:block">
         {/* Decorative layer: dotted grid + amber and brand-blue glows for depth. */}
         <div className="pointer-events-none absolute inset-0 dotted-grid opacity-40" />
-        <div className="pointer-events-none absolute -right-24 top-1/4 size-96 rounded-full bg-[radial-gradient(circle,#f59e0b,transparent_70%)] opacity-25 blur-3xl" />
-        <div className="pointer-events-none absolute -left-28 bottom-0 size-[30rem] rounded-full bg-[radial-gradient(circle,#18a8f5,transparent_68%)] opacity-25 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 top-1/4 size-96 rounded-full bg-[radial-gradient(circle,#e5142b,transparent_70%)] opacity-20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-28 bottom-0 size-[30rem] rounded-full bg-[radial-gradient(circle,#ff3b4e,transparent_68%)] opacity-10 blur-3xl" />
 
         <div className="relative flex h-full flex-col p-12 xl:p-14">
           {/* Top — logo */}
@@ -85,7 +85,7 @@ export default function Login() {
           {/* Middle — hero + benefits, vertically centered */}
           <div className="flex flex-1 flex-col justify-center py-12">
             <div className="mb-6 inline-flex items-center gap-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-brand-300">
-              <span className="h-[3px] w-6 rounded-full bg-amber-500" />
+              <span className="h-[3px] w-6 rounded-full bg-brand-600" />
               {t('auth.panelBadge')}
             </div>
             <h2 className="font-display text-[42px] font-extrabold leading-[1.02] text-white xl:text-5xl">
@@ -136,8 +136,8 @@ export default function Login() {
           <p className="mt-2 text-ink-500">{subtext}</p>
 
           {mode === 'forgot' && sent ? (
-            <div className="mt-8 rounded-2xl border border-line bg-white p-8 text-center shadow-[var(--shadow-soft)]">
-              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-50">
+            <div className="mt-8 rounded-2xl border border-line bg-surface p-8 text-center shadow-[var(--shadow-soft)]">
+              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10">
                 <CheckCircle2 className="size-8 text-emerald-500" />
               </span>
               <p className="mt-4 text-[14.5px] font-medium leading-relaxed text-navy-700">
@@ -177,7 +177,7 @@ export default function Login() {
                     </button>
                   </div>
                 )}
-                {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-[13.5px] font-medium text-red-600">{error}</p>}
+                {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-[13.5px] font-medium text-red-400">{error}</p>}
                 <Button type="submit" size="lg" variant="secondary" className="w-full" disabled={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : mode === 'login' ? t('auth.signIn') : mode === 'register' ? t('auth.register') : t('auth.sendReset')}
                 </Button>

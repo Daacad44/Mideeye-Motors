@@ -1,32 +1,30 @@
-import { ArrowRight, Phone } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ButtonLink } from '../ui/Button';
+import { useI18n } from '@/context/LocaleContext';
+import { HERO_PHOTO } from '@/lib/bundledPhotos';
 
 export function CTA() {
+  const { t } = useI18n();
   return (
-    <section className="mx-auto max-w-[1360px] px-5 pb-24 lg:px-8">
-      <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(118deg,#061423,#0d2b50_60%,#0b67c2)] px-6 py-16 text-center sm:px-16">
-        <div className="pointer-events-none absolute -right-16 -top-24 size-80 rounded-full bg-amber-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute inset-0 dotted-grid opacity-40" />
-        <div className="relative">
-          <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold text-white sm:text-[40px]">
-            Ready to command your next journey?
-          </h2>
-          <p className="mx-auto mt-4 max-w-lg text-[17px] text-brand-100/80">
-            Reserve a premium vehicle in minutes. Delivered spotless, fully insured
-            and ready when you are.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3.5">
-            <ButtonLink to="/booking" size="lg">
-              Book a Car Now <ArrowRight className="size-4" />
-            </ButtonLink>
-            <a
-              href="tel:+252612345678"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/25 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              <Phone className="size-4" /> +252 61 2345678
-            </a>
-          </div>
+    <section className="mx-auto max-w-[1320px] px-4 py-20 sm:px-6 lg:py-24">
+      <div className="relative isolate flex flex-wrap items-center justify-between gap-6 overflow-hidden rounded-[28px] border border-white/8 px-6 py-14 sm:px-14 sm:py-[72px]">
+        <img
+          src={HERO_PHOTO.rear}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 -z-10 h-full w-full object-cover object-[50%_55%]"
+        />
+        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(7,9,12,.96)_0%,rgba(7,9,12,.82)_45%,rgba(120,6,18,.45)_100%)]" />
+        <div aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-brand-600" />
+        <div>
+          <h2 className="poster text-3xl text-white sm:text-4xl lg:text-5xl">{t('home.ctaTitle')}</h2>
+          <p className="mt-2 text-[17px] text-ink-500">{t('home.ctaSub')}</p>
         </div>
+        <ButtonLink to="/booking" size="lg">
+          {t('common.bookNow')} <ArrowRight className="size-[18px]" aria-hidden />
+        </ButtonLink>
       </div>
     </section>
   );

@@ -56,6 +56,11 @@ services:
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_FROM: ${TWILIO_FROM:-}
       PAYMENTS_ALLOW_MOCK: ${PAYMENTS_ALLOW_MOCK:-false}
+      # WaafiPay merchant credentials (merchant portal). Leave empty to hide WaafiPay.
+      WAAFIPAY_MERCHANT_UID: ${WAAFIPAY_MERCHANT_UID:-}
+      WAAFIPAY_API_USER_ID: ${WAAFIPAY_API_USER_ID:-}
+      WAAFIPAY_API_KEY: ${WAAFIPAY_API_KEY:-}
+      WAAFIPAY_API_URL: ${WAAFIPAY_API_URL:-https://api.waafipay.net/asm}
       # First-boot admin accounts. No defaults: set them in Coolify. Existing
       # accounts are never modified by the seed.
       SEED_SUPER_ADMIN_EMAIL: ${SEED_SUPER_ADMIN_EMAIL:-}

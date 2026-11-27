@@ -35,8 +35,8 @@ export default function Admin() {
   if (!isStaff) {
     return (
       <div className="grid min-h-screen place-items-center bg-mist-100 px-5 text-center">
-        <div className="max-w-md rounded-3xl border border-line bg-white p-10 shadow-[var(--shadow-soft)]">
-          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600"><Lock className="size-7" /></span>
+        <div className="max-w-md rounded-3xl border border-line bg-surface p-10 shadow-[var(--shadow-soft)]">
+          <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-600/12 text-brand-600"><Lock className="size-7" /></span>
           <h1 className="mt-5 font-display text-2xl font-extrabold text-navy-700">Admin access required</h1>
           <p className="mt-2 text-ink-500">Sign in with a staff, manager, admin or super-admin account to reach the dashboard.</p>
           <ButtonLink to="/login" variant="secondary" className="mt-6">Sign in</ButtonLink>
@@ -75,7 +75,7 @@ export default function Admin() {
               className={
                 'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold transition-colors ' +
                 (tab === t.id
-                  ? 'bg-brand-600 text-white shadow-[0_8px_20px_-8px_rgba(11,103,194,0.8)]'
+                  ? 'bg-brand-600 text-white shadow-[0_8px_20px_-8px_rgba(229,20,43,0.7)]'
                   : 'text-brand-100/60 hover:bg-white/5 hover:text-white')
               }
             >
@@ -101,7 +101,7 @@ export default function Admin() {
       {/* ── Main column ── */}
       <div className="min-w-0 flex-1">
         {/* Top bar (mobile logo + role; desktop page title) */}
-        <header className="sticky top-0 z-20 border-b border-line bg-white/80 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b border-line bg-navy-950/75 backdrop-blur">
           <div className="flex items-center gap-3 px-5 py-4 lg:px-8">
             <div className="lg:hidden">
               <Logo height={40} />
@@ -116,7 +116,7 @@ export default function Admin() {
               </span>
               <button
                 onClick={logout}
-                className="inline-flex items-center gap-2 rounded-xl bg-mist-200 px-3 py-1.5 text-[13px] font-bold text-navy-700 hover:bg-brand-100 lg:hidden"
+                className="inline-flex items-center gap-2 rounded-xl bg-mist-200 px-3 py-1.5 text-[13px] font-bold text-navy-700 hover:bg-white/5 lg:hidden"
               >
                 <LogOut className="size-4" /> Logout
               </button>
@@ -200,7 +200,7 @@ function FleetPanel() {
     <div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+          <div key={k.label} className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
             <k.icon className="size-6 text-brand-500" />
             <div className="mt-3 font-display text-3xl font-extrabold text-navy-700">{k.value}</div>
             <div className="text-[13px] text-ink-400">{k.label}</div>
@@ -208,13 +208,13 @@ function FleetPanel() {
         ))}
       </div>
 
-      {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13.5px] text-red-600">{error}</div>}
+      {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13.5px] text-red-400">{error}</div>}
 
-      <div className="mt-8 rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
+      <div className="mt-8 rounded-3xl border border-line bg-surface p-6 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-navy-700">Manage fleet</h2>
           <button onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-700">
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-brand-hover">
             <Plus className="size-4" /> Add vehicle
           </button>
         </div>
@@ -351,18 +351,18 @@ function VehicleFormDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle | n
     }
   };
 
-  const field = 'w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+  const field = 'w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
   const label = 'mb-1 block text-[12px] font-bold text-navy-700';
 
   return (
     <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="h-full w-full max-w-xl overflow-y-auto bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-bold text-navy-700">{vehicle ? 'Edit vehicle' : 'Add vehicle'}</h3>
-          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
+          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-white/5"><X className="size-5" /></button>
         </div>
 
-        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+        {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">{error}</div>}
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="col-span-2"><label className={label}>Title</label><input className={field} value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Toyota Land Cruiser 2024" /></div>
@@ -395,7 +395,7 @@ function VehicleFormDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle | n
 
         <div className="mt-6 flex gap-3">
           <button onClick={submit} disabled={busy}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-bold text-white hover:bg-navy-700 disabled:opacity-60">
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-bold text-white hover:bg-brand-hover disabled:opacity-60">
             {busy ? <Loader2 className="size-4 animate-spin" /> : vehicle ? 'Save changes' : 'Create vehicle'}
           </button>
           <button onClick={onClose} className="rounded-xl border border-line px-5 py-3 text-[14px] font-bold text-navy-700 hover:border-brand-400">Cancel</button>
@@ -455,20 +455,20 @@ function CalendarDrawer({ vehicle, onClose }: { vehicle: Vehicle; onClose: () =>
   };
 
   const blocks = ranges.filter((r) => r.type === 'maintenance');
-  const field = 'w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
+  const field = 'w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[14px] font-medium text-navy-700 focus:border-brand-400 focus:outline-none';
 
   return (
     <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="h-full w-full max-w-md overflow-y-auto bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display text-xl font-bold text-navy-700">{vehicle.title}</h3>
             <p className="text-[13px] text-ink-400">Availability calendar</p>
           </div>
-          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
+          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-white/5"><X className="size-5" /></button>
         </div>
 
-        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+        {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">{error}</div>}
 
         <div className="mt-5 rounded-2xl border border-line p-4">
           {loading ? (
@@ -486,7 +486,7 @@ function CalendarDrawer({ vehicle, onClose }: { vehicle: Vehicle; onClose: () =>
           </div>
           <input className={field + ' mt-2'} placeholder="Reason (optional)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
           <button onClick={addBlock} disabled={busy}
-            className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-amber-600 disabled:opacity-60">
+            className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-brand-hover disabled:opacity-60">
             Add maintenance block
           </button>
         </div>
@@ -547,22 +547,22 @@ function DeleteVehicleDialog({ vehicle, onClose, onDeleted, onMarkedUnavailable 
 
   return (
     <div className="fixed inset-0 z-[95] grid place-items-center bg-navy-950/60 p-5 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-3xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-500"><Trash2 className="size-5" /></span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-red-500/10 text-red-500"><Trash2 className="size-5" /></span>
           <div>
             <h3 className="font-display text-lg font-bold text-navy-700">Delete {vehicle.title}?</h3>
             <p className="mt-1 text-[13.5px] text-ink-500">This permanently removes the vehicle. This can’t be undone.</p>
           </div>
         </div>
 
-        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+        {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">{error}</div>}
 
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button onClick={onClose} className="rounded-xl border border-line px-4 py-2.5 text-[13.5px] font-bold text-navy-700 hover:border-brand-400">Cancel</button>
           {conflict ? (
             <button onClick={markUnavailable} disabled={busy}
-              className="rounded-xl bg-amber-500 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-amber-600 disabled:opacity-60">
+              className="rounded-xl bg-brand-600 px-4 py-2.5 text-[13.5px] font-bold text-white hover:bg-brand-hover disabled:opacity-60">
               Mark unavailable instead
             </button>
           ) : (
@@ -580,7 +580,7 @@ function DeleteVehicleDialog({ vehicle, onClose, onDeleted, onMarkedUnavailable 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} aria-pressed={on} className={'relative h-6 w-11 rounded-full transition-colors ' + (on ? 'bg-brand-600' : 'bg-mist-200')}>
-      <span className={'absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ' + (on ? 'left-[22px]' : 'left-0.5')} />
+      <span className={'absolute top-0.5 size-5 rounded-full bg-surface shadow transition-all ' + (on ? 'left-[22px]' : 'left-0.5')} />
     </button>
   );
 }
@@ -650,18 +650,18 @@ function ImageManager({ vehicle, onClose, onChange }: { vehicle: Vehicle; onClos
 
   return (
     <div className="fixed inset-0 z-[90] flex justify-end bg-navy-950/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="h-full w-full max-w-xl overflow-y-auto bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display text-xl font-bold text-navy-700">{vehicle.title}</h3>
             <p className="text-[13px] text-ink-400">{busy ? 'Saving…' : 'ImageKit'}</p>
           </div>
-          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-brand-100"><X className="size-5" /></button>
+          <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-mist-200 text-navy-700 hover:bg-white/5"><X className="size-5" /></button>
         </div>
 
-        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">{error}</div>}
+        {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">{error}</div>}
 
-        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-brand-100/60 p-4 text-[13px] text-navy-700">
+        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-brand-600/10 p-4 text-[13px] text-navy-700">
           <Upload className="size-8 shrink-0 text-brand-600" />
           <span>Upload the real photo in the <b>Media Library</b> tab, copy its <b>image ID</b>, then paste it below to attach it here.</span>
         </div>
@@ -670,7 +670,7 @@ function ImageManager({ vehicle, onClose, onChange }: { vehicle: Vehicle; onClos
           <input value={addId} onChange={(e) => setAddId(e.target.value)} placeholder="Paste MediaImage ID to add to gallery…"
             className="flex-1 rounded-xl border border-line px-3 py-2.5 text-[13px] font-mono text-navy-700 focus:border-brand-400 focus:outline-none" />
           <button onClick={addImage} disabled={busy || !addId.trim()}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-navy-700 disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-bold text-white hover:bg-brand-hover disabled:opacity-50">
             <Plus className="size-4" /> Add
           </button>
         </div>
@@ -728,7 +728,7 @@ function ImageSlot({ label, icon: Icon, image, onSet }: { label: string; icon: R
 function IB({ children, onClick, title, danger }: { children: React.ReactNode; onClick: () => void; title: string; danger?: boolean }) {
   return (
     <button onClick={onClick} title={title} aria-label={title}
-      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-300 hover:bg-red-50' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
+      className={'grid size-8 place-items-center rounded-lg border border-line transition-colors ' + (danger ? 'text-red-500 hover:border-red-500/50 hover:bg-red-500/10' : 'text-navy-700 hover:border-brand-400 hover:text-brand-600')}>
       {children}
     </button>
   );

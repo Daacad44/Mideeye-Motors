@@ -1,29 +1,24 @@
 import { cn } from '@/lib/cn';
 import type { ReactNode } from 'react';
 
+/** Small uppercase red label above a section title. */
 export function Eyebrow({
   children,
   className,
-  color = 'amber',
 }: {
   children: ReactNode;
   className?: string;
+  /** Kept for backwards compatibility; the eyebrow is always Daljir red. */
   color?: 'amber' | 'brand';
 }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2.5 text-[12.5px] font-bold uppercase tracking-[0.18em]',
-        color === 'amber' ? 'text-amber-500' : 'text-brand-500',
+        'inline-flex items-center gap-2.5 text-[13px] font-bold uppercase tracking-[0.16em] text-brand-400',
         className,
       )}
     >
-      <span
-        className={cn(
-          'h-[3px] w-6 rounded-full',
-          color === 'amber' ? 'bg-amber-500' : 'bg-brand-500',
-        )}
-      />
+      <span className="h-[3px] w-6 rounded-full bg-brand-600" />
       {children}
     </span>
   );
@@ -35,7 +30,6 @@ export function SectionHeading({
   highlight,
   className,
   align = 'left',
-  eyebrowColor = 'amber',
 }: {
   eyebrow?: string;
   title: string;
@@ -47,11 +41,11 @@ export function SectionHeading({
   return (
     <div className={cn(align === 'center' && 'text-center', className)}>
       {eyebrow && (
-        <div className={cn('mb-4', align === 'center' && 'flex justify-center')}>
-          <Eyebrow color={eyebrowColor}>{eyebrow}</Eyebrow>
+        <div className={cn('mb-3', align === 'center' && 'flex justify-center')}>
+          <Eyebrow>{eyebrow}</Eyebrow>
         </div>
       )}
-      <h2 className="font-display text-3xl font-extrabold leading-[1.05] sm:text-4xl lg:text-[44px]">
+      <h2 className="font-display text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-[44px]">
         {title} {highlight && <span className="text-brand-600">{highlight}</span>}
       </h2>
     </div>

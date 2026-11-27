@@ -20,8 +20,8 @@ export default function Services() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s, i) => (
             <Reveal key={s.title} index={i}>
-              <div className="group h-full rounded-3xl border border-line bg-white p-8 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]">
-                <span className="grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
+              <div className="group h-full rounded-3xl border border-line bg-surface p-8 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[var(--shadow-lift)]">
+                <span className="grid size-14 place-items-center rounded-2xl bg-brand-600/12 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
                   <s.icon className="size-7" />
                 </span>
                 <h3 className="mt-5 font-display text-xl font-bold text-navy-700">{s.title}</h3>

@@ -1,9 +1,10 @@
 import { Hero } from '@/components/home/Hero';
-import { TrustStrip } from '@/components/home/TrustStrip';
-import { Featured } from '@/components/home/Featured';
-import { HowItWorks } from '@/components/home/HowItWorks';
+import { SpecStrip } from '@/components/home/SpecStrip';
 import { Categories } from '@/components/home/Categories';
-import { Testimonials } from '@/components/home/Testimonials';
+import { Featured } from '@/components/home/Featured';
+import { Spotlight } from '@/components/home/Spotlight';
+import { HowItWorks } from '@/components/home/HowItWorks';
+import { TrustStrip } from '@/components/home/TrustStrip';
 import { CTA } from '@/components/home/CTA';
 import { useI18n } from '@/context/LocaleContext';
 import { useSeo } from '@/lib/seo';
@@ -11,18 +12,19 @@ import { useSeo } from '@/lib/seo';
 export default function Home() {
   const { t } = useI18n();
   useSeo({
-    title: 'Daljir Rental Car — Premium Car Rental in Somalia',
-    description: t('hero.subtitle'),
-    image: `${window.location.origin}/pwa-512x512.png`,
+    title: 'Daljir Rental Car — Kiro baabuur heer sare ah',
+    description: t('home.heroSub'),
+    image: `${window.location.origin}/images/fleet/toyota-prado-tx/front-three-quarter.webp`,
   });
   return (
     <>
       <Hero />
-      <TrustStrip />
-      <Featured />
-      <HowItWorks />
+      <SpecStrip />
       <Categories />
-      <Testimonials />
+      <Featured />
+      <Spotlight />
+      <HowItWorks />
+      <TrustStrip />
       <CTA />
     </>
   );

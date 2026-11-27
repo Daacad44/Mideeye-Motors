@@ -47,12 +47,12 @@ export default function Pricing() {
                 className={
                   'relative flex h-full flex-col rounded-3xl border p-8 shadow-[var(--shadow-soft)] ' +
                   (p.highlight
-                    ? 'border-transparent bg-[linear-gradient(160deg,#0d2b50,#08182f)] text-white shadow-[var(--shadow-lift)]'
-                    : 'border-line bg-white')
+                    ? 'border-transparent bg-[linear-gradient(160deg,#1a0a0e,#0e1218)] ring-1 ring-brand-600/60 text-white shadow-[var(--shadow-lift)]'
+                    : 'border-line bg-surface')
                 }
               >
                 {p.highlight && (
-                  <span className="absolute right-6 top-6 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                  <span className="absolute right-6 top-6 rounded-full bg-brand-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
                     Popular
                   </span>
                 )}
@@ -69,7 +69,7 @@ export default function Pricing() {
                 <ul className="mt-6 flex-1 space-y-3">
                   {p.features.map((f) => (
                     <li key={f} className={'flex items-center gap-3 text-[14.5px] ' + (p.highlight ? 'text-brand-100/90' : 'text-navy-700')}>
-                      <span className={'grid size-5 place-items-center rounded-full ' + (p.highlight ? 'bg-amber-500 text-white' : 'bg-brand-100 text-brand-600')}>
+                      <span className={'grid size-5 place-items-center rounded-full ' + (p.highlight ? 'bg-brand-600 text-white' : 'bg-brand-600/12 text-brand-600')}>
                         <Check className="size-3" />
                       </span>
                       {f}

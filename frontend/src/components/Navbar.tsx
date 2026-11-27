@@ -5,6 +5,8 @@ import { Logo } from './ui/Logo';
 import { ButtonLink } from './ui/Button';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { useI18n } from '@/context/LocaleContext';
+import { useBranding } from '@/lib/branding';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/cn';
 
 const links = [
@@ -16,11 +18,19 @@ const links = [
   { key: 'nav.contact', to: '/contact' },
 ];
 
+const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const { t } = useI18n();
+  const { phone } = useBranding();
+  const { user, isStaff } = useAuth();
+  // Signed in: the login button becomes a link to the account (or admin) page.
+  const account = user
+    ? { to: isStaff ? '/admin' : '/dashboard', label: isStaff ? 'Admin' : t('nav.dashboard') }
+    : { to: '/login', label: t('common.login') };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -34,19 +44,18 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 transition-all duration-300',
-        scrolled
-          ? 'bg-white/85 backdrop-blur-xl border-b border-line shadow-[0_4px_20px_rgba(13,39,73,.05)]'
-          : 'bg-white/60 backdrop-blur-md border-b border-transparent',
+        'sticky top-0 z-50 border-b transition-colors duration-300',
+        scrolled || open
+          ? 'border-white/8 bg-navy-900/90 backdrop-blur-xl'
+          : 'border-transparent bg-navy-900/40 backdrop-blur-md',
       )}
     >
-      <div className="mx-auto flex max-w-[1360px] items-center gap-7 px-5 py-3.5 lg:px-8">
-        <Link to="/" aria-label="Daljir Rental Car home" className="shrink-0">
-          <Logo height={48} className="hidden sm:inline-flex" />
-          <Logo height={40} className="sm:hidden" />
+      <div className="mx-auto flex max-w-[1320px] items-center gap-6 px-4 py-3 sm:px-6">
+        <Link to="/" aria-label="Daljir Rental Car" className="shrink-0">
+          <Logo height={40} />
         </Link>
 
-        <nav className="ml-2 hidden items-center gap-1 lg:flex">
+        <nav aria-label={t('nav.main')} className="ml-2 hidden items-center gap-0.5 xl:flex">
           {links.map((l) => (
             <NavLink
               key={l.to}
@@ -54,10 +63,10 @@ export function Navbar() {
               end={l.to === '/'}
               className={({ isActive }) =>
                 cn(
-                  'rounded-lg px-3.5 py-2 text-[14.5px] font-semibold transition-colors',
+                  'relative whitespace-nowrap rounded-lg px-2.5 py-2 text-[15px] font-medium transition-colors',
                   isActive
-                    ? 'text-brand-600'
-                    : 'text-navy-700/80 hover:text-brand-600 hover:bg-brand-100/60',
+                    ? 'text-white after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:rounded-full after:bg-brand-600'
+                    : 'text-ink-500 hover:text-white',
                 )
               }
             >
@@ -67,42 +76,42 @@ export function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="hidden md:block">
-            <LocaleSwitcher />
+          <div className="hidden 2xl:block">
+            <LocaleSwitcher variant="light" />
           </div>
-          <a
-            href="tel:+252612345678"
-            className="hidden items-center gap-2 text-sm font-semibold text-navy-700 xl:flex"
-          >
-            <span className="grid size-9 place-items-center rounded-full bg-brand-100 text-brand-600">
-              <Phone className="size-4" />
-            </span>
-            +252 61 2345678
-          </a>
+          {phone && (
+            <a
+              href={telHref(phone)}
+              className="hidden items-center gap-2 whitespace-nowrap text-sm font-semibold text-ink-700 transition-colors hover:text-white 2xl:flex"
+            >
+              <Phone className="size-4 text-brand-400" aria-hidden />
+              {phone}
+            </a>
+          )}
           <Link
-            to="/login"
-            className="hidden rounded-xl border border-line px-5 py-2.5 text-sm font-bold text-navy-700 transition-colors hover:border-brand-400 hover:text-brand-600 sm:inline-flex"
+            to={account.to}
+            className="hidden min-h-10 items-center rounded-xl border border-white/14 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/8 sm:inline-flex"
           >
-            {t('common.login')}
+            {account.label}
           </Link>
           <ButtonLink to="/booking" size="sm" className="hidden sm:inline-flex">
-            {t('common.bookNow')} <ArrowRight className="size-4" />
+            {t('common.bookNow')} <ArrowRight className="size-4" aria-hidden />
           </ButtonLink>
           <button
             type="button"
-            aria-label="Toggle menu"
+            aria-label={open ? t('nav.closeMenu') : t('nav.openMenu')}
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="grid size-10 place-items-center rounded-xl border border-line text-navy-700 lg:hidden"
+            className="grid size-11 place-items-center rounded-xl border border-white/14 text-white xl:hidden"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile drawer */}
       {open && (
-        <div className="border-t border-line bg-white lg:hidden">
-          <nav className="mx-auto flex max-w-[1360px] flex-col px-5 py-3">
+        <div className="border-t border-white/8 bg-navy-900 xl:hidden">
+          <nav aria-label={t('nav.main')} className="mx-auto flex max-w-[1320px] flex-col px-4 py-3">
             {links.map((l) => (
               <NavLink
                 key={l.to}
@@ -110,24 +119,24 @@ export function Navbar() {
                 end={l.to === '/'}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-lg px-3 py-3 text-[15px] font-semibold',
-                    isActive ? 'text-brand-600 bg-brand-100/60' : 'text-navy-700',
+                    'rounded-xl px-3 py-3 text-[16px] font-semibold',
+                    isActive ? 'bg-brand-600/12 text-white' : 'text-ink-500',
                   )
                 }
               >
                 {t(l.key)}
               </NavLink>
             ))}
-            <div className="mt-3 px-1"><LocaleSwitcher /></div>
-            <div className="mt-2 flex gap-3">
+            <div className="mt-3 px-1"><LocaleSwitcher variant="light" /></div>
+            <div className="mt-3 flex gap-3">
               <Link
-                to="/login"
-                className="flex-1 rounded-xl border border-line px-5 py-3 text-center text-sm font-bold text-navy-700"
+                to={account.to}
+                className="flex min-h-12 flex-1 items-center justify-center rounded-[14px] border border-white/14 text-sm font-bold text-white"
               >
-                {t('common.login')}
+                {account.label}
               </Link>
               <ButtonLink to="/booking" className="flex-1">
-                {t('common.bookNow')} <ArrowRight className="size-4" />
+                {t('common.bookNow')} <ArrowRight className="size-4" aria-hidden />
               </ButtonLink>
             </div>
           </nav>

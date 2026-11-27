@@ -1,61 +1,25 @@
-import { Search, CalendarCheck, KeyRound } from 'lucide-react';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from '../ui/SectionHeading';
+import { useI18n } from '@/context/LocaleContext';
 
-const steps = [
-  {
-    icon: Search,
-    step: '01',
-    title: 'Choose your car',
-    desc: 'Browse our premium fleet and pick the perfect vehicle for your journey.',
-  },
-  {
-    icon: CalendarCheck,
-    step: '02',
-    title: 'Book & confirm',
-    desc: 'Select your dates, add extras and confirm in a few effortless taps.',
-  },
-  {
-    icon: KeyRound,
-    step: '03',
-    title: 'Hit the road',
-    desc: 'Collect your spotless, fully-insured car — or have it delivered to you.',
-  },
-];
+const STEPS = ['1', '2', '3'] as const;
 
 export function HowItWorks() {
+  const { t } = useI18n();
   return (
-    <section className="bg-gradient-to-b from-mist-200 to-white">
-      <div className="mx-auto max-w-[1360px] px-5 py-20 lg:px-8 lg:py-24">
-        <div className="mb-12 flex justify-center">
-          <SectionHeading
-            eyebrow="Simple Process"
-            title="Rent in"
-            highlight="three easy steps"
-            align="center"
-          />
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {steps.map((s, i) => (
-            <Reveal key={s.step} index={i}>
-              <div className="relative h-full overflow-hidden rounded-3xl border border-line bg-white p-8 shadow-[var(--shadow-soft)]">
-                <span className="absolute -right-2 -top-4 font-display text-[90px] font-extrabold text-brand-100">
-                  {s.step}
-                </span>
-                <span className="relative grid size-14 place-items-center rounded-2xl bg-brand-600 text-white shadow-[var(--shadow-glow-brand)]">
-                  <s.icon className="size-7" />
-                </span>
-                <h3 className="relative mt-6 font-display text-xl font-bold text-navy-700">
-                  {s.title}
-                </h3>
-                <p className="relative mt-2.5 text-[15px] leading-relaxed text-ink-500">
-                  {s.desc}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
+    <section className="mx-auto max-w-[1320px] px-4 pt-20 sm:px-6 lg:pt-24">
+      <SectionHeading eyebrow={t('home.howEyebrow')} title={t('home.howTitle')} />
+      <ol className="mt-8 grid list-none gap-4 p-0 md:grid-cols-3">
+        {STEPS.map((n, i) => (
+          <Reveal key={n} index={i}>
+            <li className="h-full rounded-[22px] border border-white/8 bg-surface p-7">
+              <div className="font-display text-[56px] font-extrabold leading-none text-brand-600">0{n}</div>
+              <h3 className="mt-4 font-display text-xl font-bold text-white">{t(`home.step${n}Title`)}</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-ink-500">{t(`home.step${n}Desc`)}</p>
+            </li>
+          </Reveal>
+        ))}
+      </ol>
     </section>
   );
 }

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import {
-  Star, Users, Gauge, Fuel, Cog, Zap, DoorOpen, MapPin, Palette,
-  Check, Expand, ShieldCheck, ArrowRight, ChevronRight, CalendarDays, Loader2, MessageSquare,
-} from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Star, Check, Expand, ArrowRight, CalendarDays, Loader2, MessageSquare, Gauge, Users, Cog } from 'lucide-react';
 import { useVehicle, useVehicles } from '@/hooks/useVehicles';
 import { VehicleImage } from '@/components/VehicleImage';
 import { MonthCalendar } from '@/components/MonthCalendar';
@@ -11,7 +8,11 @@ import { Lightbox } from '@/components/Lightbox';
 import { VehicleCard } from '@/components/VehicleCard';
 import { ButtonLink } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
-import { useCurrency } from '@/context/LocaleContext';
+import { useCurrency, useI18n } from '@/context/LocaleContext';
+import { bookingsApi } from '@/lib/bookingsApi';
+import { categoryKey } from '@/lib/categories';
+import { locationKey } from '@/lib/locations';
+import { cn } from '@/lib/cn';
 import { useSeo } from '@/lib/seo';
 import { ik } from '@/lib/imagekitImages';
 import { vehiclesApi, type Review, type BusyRange } from '@/lib/vehiclesApi';
@@ -40,13 +41,32 @@ export default function VehicleDetails() {
   const [posting, setPosting] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
+  const { t, locale } = useI18n();
+  const [params] = useSearchParams();
+  const [pickupDate, setPickupDate] = useState(params.get('pickupDate') ?? '');
+  const [returnDate, setReturnDate] = useState(params.get('returnDate') ?? '');
+  const [available, setAvailable] = useState<boolean | null>(null);
+
   const images: GalleryItem[] = useMemo(() => {
     if (!vehicle) return [];
-    const cover = vehicle.coverImage
-      ? [{ filePath: vehicle.coverImage.filePath, alt: vehicle.coverImage.alt || vehicle.title, tag: 'cover' }]
-      : [];
-    return [...cover, ...vehicle.gallery.map((g) => ({ filePath: g.filePath, alt: g.alt, tag: g.tag }))];
+    const list: GalleryItem[] = [
+      ...vehicle.gallery.map((g) => ({ filePath: g.filePath, alt: g.alt, tag: g.tag })),
+      ...(vehicle.coverImage ? [{ filePath: vehicle.coverImage.filePath, alt: vehicle.coverImage.alt || vehicle.title, tag: 'side' }] : []),
+    ];
+    // De-duplicate (the cover is often also in the gallery).
+    return list.filter((img, i) => list.findIndex((x) => x.filePath === img.filePath) === i);
   }, [vehicle]);
+
+  const datesValid = !!pickupDate && !!returnDate && new Date(returnDate) > new Date(pickupDate);
+  useEffect(() => {
+    if (!vehicle || !datesValid) { setAvailable(null); return; }
+    let alive = true;
+    bookingsApi
+      .checkAvailability(vehicle!.slug, pickupDate, returnDate)
+      .then((r) => { if (alive) setAvailable(r.data.available); })
+      .catch(() => { if (alive) setAvailable(null); });
+    return () => { alive = false; };
+  }, [vehicle, pickupDate, returnDate, datesValid]);
 
   const vehicleSlug = vehicle?.slug;
   const vehicleId = vehicle?.id;
@@ -87,25 +107,25 @@ export default function VehicleDetails() {
   };
 
   useSeo({
-    title: vehicle ? `${vehicle.title} — ${vehicle.brand}` : 'Vehicle',
+    title: vehicle ? `${vehicle.title} — Daljir Rental Car` : 'Daljir Rental Car',
     description: vehicle?.description,
-    image: vehicle?.coverImage ? ik(vehicle.coverImage.filePath, 'card') : undefined,
+    image: vehicle?.heroImage ? ik(vehicle.heroImage.filePath, 'card') : undefined,
     type: 'product',
   });
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1360px] px-5 py-16 lg:px-8">
-        <div className="skeleton h-[520px] rounded-3xl" />
+      <div className="mx-auto max-w-[1320px] px-4 py-16 sm:px-6">
+        <div className="skeleton h-[520px] rounded-[28px]" />
       </div>
     );
   }
 
   if (!vehicle) {
     return (
-      <div className="mx-auto max-w-[1360px] px-5 py-32 text-center lg:px-8">
-        <h1 className="font-display text-3xl font-extrabold text-navy-700">Vehicle not found</h1>
-        <ButtonLink to="/fleet" className="mt-6">Back to Fleet</ButtonLink>
+      <div className="mx-auto max-w-[1320px] px-4 py-32 text-center sm:px-6">
+        <h1 className="poster text-4xl text-white">{t('vehicle.notFound')}</h1>
+        <ButtonLink to="/fleet" className="mt-6">{t('vehicle.backToFleet')}</ButtonLink>
       </div>
     );
   }
@@ -120,243 +140,277 @@ export default function VehicleDetails() {
     ? reviews.length ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 : 0
     : vehicle.rating;
 
-  const specs = [
-    { icon: Users, label: 'Seats', value: `${vehicle.seats}` },
-    { icon: DoorOpen, label: 'Doors', value: `${vehicle.doors}` },
-    { icon: Gauge, label: 'Transmission', value: vehicle.transmission },
-    { icon: Fuel, label: 'Fuel', value: vehicle.fuelType },
-    { icon: Cog, label: 'Engine', value: vehicle.engine },
-    { icon: Zap, label: 'Power', value: `${vehicle.horsePower} hp` },
-    { icon: Palette, label: 'Colour', value: vehicle.color },
-    { icon: MapPin, label: 'Location', value: vehicle.location },
+  const days = datesValid ? Math.max(1, Math.round((new Date(returnDate).getTime() - new Date(pickupDate).getTime()) / 86400000)) : 0;
+  const carTotal = vehicle.pricePerDay * days;
+  const tax = carTotal * 0.05;
+  const side = vehicle.gallery.find((g) => g.tag === 'side') ?? vehicle.coverImage ?? vehicle.heroImage;
+  const loc = locationKey(vehicle.location);
+  const bookingHref = `/booking?${new URLSearchParams({
+    vehicle: vehicle.slug,
+    ...(pickupDate ? { pickupDate } : {}),
+    ...(returnDate ? { returnDate } : {}),
+    ...(params.get('pickup') ? { pickup: params.get('pickup')! } : {}),
+  }).toString()}`;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const specRows = [
+    { k: t('specs.year'), v: String(vehicle.year) },
+    { k: t('specs.brand'), v: vehicle.brand },
+    { k: t('specs.engine'), v: vehicle.engine },
+    { k: t('specs.power'), v: `${vehicle.horsePower} HP` },
+    { k: t('specs.fuel'), v: t(`values.${vehicle.fuelType}`) },
+    { k: t('specs.transmission'), v: t(`values.${vehicle.transmission}`) },
+    { k: t('specs.seats'), v: String(vehicle.seats) },
+    { k: t('specs.doors'), v: String(vehicle.doors) },
+    { k: t('specs.color'), v: vehicle.color },
+    { k: t('specs.mileage'), v: vehicle.mileage },
   ];
 
   return (
-    <div className="bg-mist-100">
-      <div className="mx-auto max-w-[1360px] px-5 py-8 lg:px-8 lg:py-12">
-        {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-1.5 text-[13px] font-semibold text-ink-400">
-          <Link to="/" className="hover:text-brand-600">Home</Link>
-          <ChevronRight className="size-3.5" />
-          <Link to="/fleet" className="hover:text-brand-600">Fleet</Link>
-          <ChevronRight className="size-3.5" />
-          <span className="text-navy-700">{vehicle.title}</span>
-        </nav>
-
-        <div className="grid gap-8 lg:grid-cols-[1.55fr_1fr]">
-          {/* Gallery */}
-          <div>
-            <div className="group relative overflow-hidden rounded-3xl border border-line bg-gradient-to-b from-mist-200 to-white p-6 shadow-[var(--shadow-soft)]">
-              <div className="absolute left-6 top-6 z-10 flex gap-2">
-                <span className="rounded-full bg-navy-900/85 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">
-                  {vehicle.category}
+    <div>
+      {/* Poster hero */}
+      <section className="relative overflow-hidden bg-[radial-gradient(900px_380px_at_50%_78%,rgba(229,20,43,.22),transparent_70%),linear-gradient(180deg,#0b0e13,#07090c)]">
+        <div className="mx-auto max-w-[1320px] px-4 pt-8 sm:px-6 sm:pt-12">
+          <nav aria-label="Breadcrumb" className="mb-6 text-[13px] text-ink-400">
+            <Link to="/" className="hover:text-white">{t('nav.home')}</Link> /{' '}
+            <Link to="/fleet" className="hover:text-white">{t('nav.fleet')}</Link> /{' '}
+            <span className="text-white">{vehicle.title}</span>
+          </nav>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-extrabold tracking-[0.06em] text-white">
+                  {t(categoryKey(vehicle.category) ?? vehicle.category).toUpperCase()}
                 </span>
-                {vehicle.availability && (
-                  <span className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                    Available
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setLightbox(active)}
-                className="absolute right-6 top-6 z-10 grid size-11 place-items-center rounded-full bg-white/90 text-navy-700 shadow-md backdrop-blur transition-colors hover:text-brand-600"
-                aria-label="Open fullscreen"
-              >
-                <Expand className="size-5" />
-              </button>
-              <button onClick={() => setLightbox(active)} className="block w-full cursor-zoom-in">
-                <VehicleImage
-                  filePath={images[active]?.filePath}
-                  alt={images[active]?.alt ?? vehicle.title}
-                  preset="gallery"
-                  fit="contain"
-                  priority
-                  className="aspect-[16/10] w-full"
-                />
-              </button>
-            </div>
-
-            {/* Thumbnails */}
-            <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
-              {images.map((img, i) => (
-                <button
-                  key={img.filePath}
-                  onClick={() => setActive(i)}
-                  className={
-                    'h-20 w-28 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition ' +
-                    (i === active ? 'border-brand-500 shadow-md' : 'border-line opacity-70 hover:opacity-100')
-                  }
-                >
-                  <VehicleImage
-                    filePath={img.filePath}
-                    alt={img.alt}
-                    preset="thumb"
-                    fit="contain"
-                    className="h-full w-full"
-                  />
-                </button>
-              ))}
-            </div>
-
-            {/* Description + specs + features */}
-            <div className="mt-10">
-              <h1 className="font-display text-3xl font-extrabold text-navy-700 lg:text-4xl">
-                {vehicle.title}
-              </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-100 px-2.5 py-1 font-bold text-brand-600">
-                  <Star className="size-4 fill-amber-500 text-amber-500" />
-                  {avgRating || '—'} <span className="font-medium text-ink-400">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
+                <span className={cn('rounded-lg px-3 py-1.5 text-xs font-bold', vehicle.availability ? 'bg-emerald-500/16 text-emerald-400' : 'bg-amber-500/16 text-amber-400')}>
+                  {vehicle.availability ? t('fleet.available') : t('fleet.rented')}
                 </span>
-                <span className="text-ink-500">{vehicle.brand} · {vehicle.year}</span>
+                <span className="rounded-lg bg-elevated px-3 py-1.5 text-xs font-semibold text-ink-700">{loc ? t(loc) : vehicle.location}</span>
               </div>
-              <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-ink-500">
-                {vehicle.description}
-              </p>
-
-              <h2 className="mt-10 font-display text-xl font-bold text-navy-700">Specifications</h2>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {specs.map((s) => (
-                  <div key={s.label} className="rounded-2xl border border-line bg-white p-4">
-                    <s.icon className="size-5 text-brand-500" />
-                    <div className="mt-2 text-[12px] font-semibold uppercase tracking-wide text-ink-400">
-                      {s.label}
-                    </div>
-                    <div className="text-[14.5px] font-bold text-navy-700">{s.value}</div>
-                  </div>
-                ))}
-              </div>
-
-              <h2 className="mt-10 font-display text-xl font-bold text-navy-700">Features</h2>
-              <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {vehicle.features.map((f) => (
-                  <div key={f} className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-[15px] font-medium text-navy-700 shadow-[var(--shadow-soft)]">
-                    <span className="grid size-6 place-items-center rounded-full bg-brand-100 text-brand-600">
-                      <Check className="size-3.5" />
-                    </span>
-                    {f}
-                  </div>
-                ))}
-              </div>
+              <h1 className="poster mt-4 text-[44px] text-white sm:text-6xl lg:text-[80px]">{vehicle.title}</h1>
+              <p className="mt-4 max-w-[560px] text-[17px] text-ink-500">{vehicle.description}</p>
             </div>
+            {reviewCount > 0 && (
+              <div className="flex items-center gap-2.5 text-ink-700">
+                <Star className="size-5 fill-amber-400 text-amber-400" aria-hidden />
+                <span className="font-bold text-white">{avgRating}</span>
+                <span className="text-ink-400">· {reviewCount} {t('vehicle.reviewsCount')}</span>
+              </div>
+            )}
           </div>
-
-          {/* Sticky booking widget */}
-          <aside>
-            <div className="sticky top-24 space-y-4">
-              <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-lift)]">
-                <div className="flex items-end justify-between">
-                  <div>
-                    <span className="text-[13px] font-semibold uppercase tracking-wide text-ink-400">From</span>
-                    <div>
-                      <span className="font-display text-4xl font-extrabold text-navy-700">
-                        {money(vehicle.pricePerDay)}
-                      </span>
-                      <span className="text-[15px] font-medium text-ink-400"> / day</span>
-                    </div>
-                  </div>
-                  <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-[13px] font-bold text-emerald-600">
-                    {vehicle.availability ? 'In stock' : 'Reserved'}
-                  </span>
-                </div>
-
-                <div className="my-5 grid grid-cols-2 gap-3">
-                  <PriceTile label="Weekly" value={vehicle.pricePerWeek} />
-                  <PriceTile label="Monthly" value={vehicle.pricePerMonth} />
-                </div>
-
-                <ButtonLink to={`/booking?vehicle=${vehicle.slug}`} className="w-full" size="lg">
-                  Book This Car <ArrowRight className="size-4" />
-                </ButtonLink>
-                <Link
-                  to="/fleet"
-                  className="mt-3 flex w-full items-center justify-center rounded-xl border border-line px-6 py-3.5 text-[15px] font-bold text-navy-700 transition-colors hover:border-brand-400 hover:text-brand-600"
-                >
-                  Back to Fleet
-                </Link>
-
-                <div className="mt-5 flex items-center gap-3 rounded-2xl bg-brand-100/60 p-4 text-[13.5px] text-navy-700">
-                  <ShieldCheck className="size-8 shrink-0 text-brand-600" />
-                  <span>Free cancellation up to 48h before pickup · Full insurance included.</span>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)]">
-                <h3 className="mb-3 flex items-center gap-2 font-display text-[15px] font-bold text-navy-700">
-                  <CalendarDays className="size-4 text-brand-600" /> Availability
-                </h3>
-                <MonthCalendar ranges={calendar} />
-                <p className="mt-3 text-[12px] text-ink-400">Highlighted days are already booked or under maintenance.</p>
-              </div>
-            </div>
-          </aside>
+          <VehicleImage
+            filePath={side?.filePath}
+            alt={side?.alt || vehicle.title}
+            preset="hero"
+            fit="contain"
+            priority
+            className="mx-auto mt-6 aspect-[1792/592] w-full max-w-[1160px]"
+            imgClassName="mix-blend-lighten"
+          />
         </div>
 
-        {/* Reviews */}
-        <section className="mt-16">
-          <div className="rounded-3xl border border-line bg-white p-6 shadow-[var(--shadow-soft)] lg:p-8">
+        {/* Spec strip */}
+        <dl className="m-0 border-y border-white/8 bg-navy-900/70">
+          <div className="mx-auto grid max-w-[1320px] grid-cols-2 px-4 sm:px-6 md:grid-cols-5">
+            <SpecCell icon={Cog} label={t('specs.engine')} value={vehicle.engine} />
+            <SpecCell big label={t('specs.power')} value={String(vehicle.horsePower)} unit="HP" />
+            <SpecCell icon={Users} big label={t('specs.seats')} value={String(vehicle.seats)} />
+            <SpecCell icon={Gauge} label={t('specs.transmission')} value={t(`values.${vehicle.transmission}`)} />
+            <SpecCell big label={t('specs.price')} value={money(vehicle.pricePerDay)} unit={t('common.perDay')} />
+          </div>
+        </dl>
+      </section>
+
+      <div className="mx-auto flex max-w-[1320px] flex-wrap items-start gap-7 px-4 pb-20 pt-10 sm:px-6">
+        <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-10">
+          {/* Gallery */}
+          {images.length > 0 && (
+            <section aria-label={t('vehicle.photos')}>
+              <div className="relative overflow-hidden rounded-[22px] border border-white/8 bg-surface">
+                <button type="button" onClick={() => setLightbox(active)} className="block w-full cursor-zoom-in" aria-label={t('vehicle.enlarge')}>
+                  <VehicleImage
+                    filePath={images[active]?.filePath}
+                    alt={images[active]?.alt ?? vehicle.title}
+                    preset="gallery"
+                    fit={images[active]?.tag === 'side' ? 'contain' : 'cover'}
+                    className="aspect-[2/1] w-full"
+                  />
+                </button>
+                <span className="pointer-events-none absolute bottom-3.5 right-3.5 inline-flex items-center gap-2 rounded-[10px] bg-navy-900/80 px-3 py-2 text-[13px] font-semibold text-white">
+                  <Expand className="size-4" aria-hidden /> {active + 1} / {images.length}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+                {images.map((img, i) => (
+                  <button
+                    key={img.filePath}
+                    type="button"
+                    onClick={() => setActive(i)}
+                    aria-label={`${t('vehicle.photo')}: ${t(`gallery.${img.tag ?? 'gallery'}`)}`}
+                    aria-current={i === active}
+                    className={cn(
+                      'relative aspect-[4/3] overflow-hidden rounded-xl border-2 bg-surface transition-colors',
+                      i === active ? 'border-brand-600' : 'border-white/8 hover:border-white/25',
+                    )}
+                  >
+                    <VehicleImage filePath={img.filePath} alt="" preset="thumb" fit="cover" className="h-full w-full" />
+                    <span className="absolute bottom-1.5 left-1.5 rounded-md bg-navy-900/85 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                      {t(`gallery.${img.tag ?? 'gallery'}`)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Features */}
+          {vehicle.features.length > 0 && (
+            <section>
+              <h2 className="text-[28px] font-extrabold">{t('vehicle.features')}</h2>
+              <ul className="m-0 mt-4 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
+                {vehicle.features.map((f) => (
+                  <li key={f} className="flex items-center gap-3 rounded-[14px] border border-white/8 bg-surface p-4">
+                    <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-brand-600/12 text-brand-400">
+                      <Check className="size-[18px]" aria-hidden />
+                    </span>
+                    <span className="text-[15px] font-semibold text-white">{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Specs */}
+          <section>
+            <h2 className="text-[28px] font-extrabold">{t('vehicle.specs')}</h2>
+            <dl className="m-0 mt-4 grid grid-cols-1 overflow-hidden rounded-2xl border border-white/8 sm:grid-cols-2">
+              {specRows.map((r) => (
+                <div key={r.k} className="flex justify-between gap-3 border-b border-white/6 bg-inset px-[18px] py-3.5">
+                  <dt className="text-ink-400">{r.k}</dt>
+                  <dd className="m-0 text-right font-semibold text-white">{r.v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {/* Reviews */}
+          <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-display text-2xl font-extrabold text-navy-700">Reviews</h2>
-              <div className="flex items-center gap-2 rounded-xl bg-brand-100 px-3 py-1.5 font-bold text-brand-600">
-                <Star className="size-4 fill-amber-500 text-amber-500" />
-                {avgRating || '—'} <span className="font-medium text-ink-400">· {reviewCount} total</span>
+              <h2 className="text-[28px] font-extrabold">{t('vehicle.reviews')}</h2>
+              <div className="flex items-center gap-2 rounded-xl bg-elevated px-3 py-1.5 font-bold text-white">
+                <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden />
+                {avgRating || '—'} <span className="font-medium text-ink-400">· {reviewCount}</span>
               </div>
             </div>
 
             {!user ? (
-              <div className="mt-5 rounded-2xl border border-line bg-mist-100 px-5 py-4 text-[14px] text-ink-500">
-                <Link to="/login" className="font-bold text-brand-600 hover:underline">Sign in</Link> after a completed rental to leave a review.
+              <div className="mt-5 rounded-2xl border border-white/8 bg-inset px-5 py-4 text-[14px] text-ink-500">
+                <Link to="/login" className="font-bold text-brand-400 hover:underline">{t('common.login')}</Link> {t('vehicle.loginToReview')}
               </div>
             ) : canReview ? (
-              <div className="mt-5 rounded-2xl border border-line p-5">
-                <h3 className="flex items-center gap-2 font-display text-[15px] font-bold text-navy-700"><MessageSquare className="size-4 text-brand-600" /> Write a review</h3>
-                {reviewError && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-600">{reviewError}</div>}
+              <div className="mt-5 rounded-2xl border border-white/8 bg-surface p-5">
+                <h3 className="flex items-center gap-2 text-[15px] font-bold"><MessageSquare className="size-4 text-brand-400" aria-hidden /> {t('vehicle.writeReview')}</h3>
+                {reviewError && <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-400">{reviewError}</div>}
                 <div className="mt-3"><StarInput value={rating} onChange={setRating} /></div>
-                <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Share your experience (optional)" rows={3}
-                  className="mt-3 w-full rounded-xl border border-line px-4 py-3 text-[14px] text-navy-700 focus:border-brand-400 focus:outline-none" />
-                <button onClick={submitReview} disabled={posting}
-                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[14px] font-bold text-white hover:bg-navy-700 disabled:opacity-60">
-                  {posting ? <Loader2 className="size-4 animate-spin" /> : 'Submit review'}
+                <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('vehicle.reviewPlaceholder')} rows={3}
+                  className="mt-3 w-full rounded-xl border border-white/12 bg-inset px-4 py-3 text-[15px] text-white placeholder:text-ink-400 focus:border-brand-400 focus:outline-none" />
+                <button type="button" onClick={submitReview} disabled={posting}
+                  className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[14px] font-bold text-white hover:bg-brand-hover disabled:opacity-60">
+                  {posting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : t('vehicle.submitReview')}
                 </button>
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl border border-line bg-mist-100 px-5 py-4 text-[14px] text-ink-500">
-                Rent this car and complete your trip to leave a review.
+              <div className="mt-5 rounded-2xl border border-white/8 bg-inset px-5 py-4 text-[14px] text-ink-500">
+                {t('vehicle.rentToReview')}
               </div>
             )}
 
             <div className="mt-6 space-y-4">
               {reviewsLoaded && reviews.length === 0 && (
-                <p className="text-[14px] text-ink-400">No reviews yet — be the first after your trip.</p>
+                <p className="text-[14px] text-ink-400">{t('vehicle.noReviews')}</p>
               )}
               {reviews.map((r) => (
-                <div key={r.id} className="border-t border-line pt-4 first:border-0 first:pt-0">
+                <div key={r.id} className="border-t border-white/8 pt-4 first:border-0 first:pt-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-bold text-navy-700">{r.reviewer}</div>
-                    <div className="text-[12px] text-ink-400">{new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</div>
+                    <div className="font-bold text-white">{r.reviewer}</div>
+                    <div className="text-[12px] text-ink-400">
+                      {new Date(r.createdAt).toLocaleDateString(locale === 'so' ? 'so' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                    </div>
                   </div>
                   <div className="mt-1"><Stars value={r.rating} /></div>
                   {r.comment && <p className="mt-2 text-[14px] leading-relaxed text-ink-500">{r.comment}</p>}
                 </div>
               ))}
             </div>
+          </section>
+        </div>
+
+        {/* Booking panel */}
+        <aside aria-label={t('vehicle.bookThis')} className="w-full flex-[1_1_340px] lg:sticky lg:top-24 lg:max-w-[420px]">
+          <div className="flex flex-col gap-4 rounded-[22px] border border-white/10 bg-surface p-6 shadow-[0_30px_80px_rgba(0,0,0,.45)]">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-[40px] font-extrabold text-white">{money(vehicle.pricePerDay)}</span>
+              <span className="text-ink-400">{t('common.perDay')}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-500">
+                {t('booking.pickupDate')}
+                <input type="date" min={today} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)}
+                  className="rounded-xl border border-white/12 bg-inset p-3 text-[15px] font-semibold text-white focus:border-brand-400 focus:outline-none" />
+              </label>
+              <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-500">
+                {t('booking.returnDate')}
+                <input type="date" min={pickupDate || today} value={returnDate} onChange={(e) => setReturnDate(e.target.value)}
+                  className="rounded-xl border border-white/12 bg-inset p-3 text-[15px] font-semibold text-white focus:border-brand-400 focus:outline-none" />
+              </label>
+            </div>
+            {available !== null && (
+              <div
+                role="status"
+                className={cn(
+                  'flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold',
+                  available ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-300',
+                )}
+              >
+                <Check className="size-4" aria-hidden /> {available ? t('vehicle.datesFree') : t('vehicle.datesTaken')}
+              </div>
+            )}
+            {days > 0 && (
+              <dl className="m-0 flex flex-col gap-2.5 text-[15px]">
+                <div className="flex justify-between"><dt className="text-ink-500">{money(vehicle.pricePerDay)} × {days} {days > 1 ? t('booking.days') : t('booking.day')}</dt><dd className="m-0 text-white">{money(carTotal)}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink-500">{t('booking.tax')}</dt><dd className="m-0 text-white">{money(tax)}</dd></div>
+                <div className="flex justify-between border-t border-white/8 pt-3 text-lg font-extrabold"><dt className="text-white">{t('booking.total')}</dt><dd className="m-0 font-display text-2xl text-white">{money(carTotal + tax)}</dd></div>
+              </dl>
+            )}
+            <div className="grid grid-cols-2 gap-2.5">
+              <PriceTile label={t('vehicle.weekly')} value={vehicle.pricePerWeek} />
+              <PriceTile label={t('vehicle.monthly')} value={vehicle.pricePerMonth} />
+            </div>
+            <ButtonLink to={bookingHref} size="lg" className="w-full">
+              {t('vehicle.continue')} <ArrowRight className="size-4" aria-hidden />
+            </ButtonLink>
+            <p className="text-center text-[13px] text-ink-400">{t('vehicle.noChargeYet')}</p>
+          </div>
+
+          <div className="mt-4 rounded-[22px] border border-white/8 bg-surface p-6">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-[15px] font-bold">
+              <CalendarDays className="size-4 text-brand-400" aria-hidden /> {t('vehicle.availability')}
+            </h2>
+            <MonthCalendar ranges={calendar} />
+          </div>
+        </aside>
+      </div>
+
+      {related.length > 0 && (
+        <section className="mx-auto max-w-[1320px] px-4 pb-20 sm:px-6">
+          <h2 className="mb-7 text-3xl font-extrabold">{t('vehicle.related')}</h2>
+          <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
+            {related.map((v, i) => (
+              <VehicleCard key={v.id} vehicle={v} index={i} />
+            ))}
           </div>
         </section>
-
-        {/* Related */}
-        {related.length > 0 && (
-          <section className="mt-20">
-            <h2 className="mb-8 font-display text-2xl font-extrabold text-navy-700 lg:text-3xl">
-              Related <span className="text-brand-600">vehicles</span>
-            </h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {related.map((v, i) => (
-                <VehicleCard key={v.id} vehicle={v} index={i} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+      )}
 
       {lightbox !== null && (
         <Lightbox
@@ -370,12 +424,25 @@ export default function VehicleDetails() {
   );
 }
 
+function SpecCell({ icon: Icon, label, value, unit, big }: { icon?: React.ElementType; label: string; value: string; unit?: string; big?: boolean }) {
+  return (
+    <div className="flex flex-col gap-1 border-white/8 py-5 pr-4 [&:not(:first-child)]:md:border-l md:pl-5">
+      <dt className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.1em] text-ink-400">
+        {Icon && <Icon className="size-4 text-brand-400" aria-hidden />} {label}
+      </dt>
+      <dd className={cn('m-0 font-display tabular-nums', big ? 'text-[40px] font-extrabold leading-none text-brand-500 sm:text-[48px]' : 'text-xl font-bold text-white')}>
+        {value} {unit && <span className="text-sm font-medium text-ink-500">{unit}</span>}
+      </dd>
+    </div>
+  );
+}
+
 function PriceTile({ label, value }: { label: string; value: number }) {
   const { money } = useCurrency();
   return (
-    <div className="rounded-2xl border border-line bg-mist-100 p-3.5 text-center">
+    <div className="rounded-xl border border-white/8 bg-inset p-3 text-center">
       <div className="text-[12px] font-semibold uppercase tracking-wide text-ink-400">{label}</div>
-      <div className="font-display text-lg font-extrabold text-navy-700">{money(value)}</div>
+      <div className="font-display text-lg font-extrabold text-white">{money(value)}</div>
     </div>
   );
 }
@@ -384,7 +451,7 @@ function Stars({ value }: { value: number }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((n) => (
-        <Star key={n} className={'size-4 ' + (n <= value ? 'fill-amber-500 text-amber-500' : 'text-line')} />
+        <Star key={n} className={'size-4 ' + (n <= value ? 'fill-amber-500 text-amber-500' : 'text-white/15')} />
       ))}
     </div>
   );
@@ -394,8 +461,8 @@ function StarInput({ value, onChange }: { value: number; onChange: (n: number) =
   return (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" onClick={() => onChange(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
-          <Star className={'size-7 transition ' + (n <= value ? 'fill-amber-500 text-amber-500' : 'text-line hover:text-amber-300')} />
+        <button key={n} type="button" onClick={() => onChange(n)} aria-label={`${n} / 5`}>
+          <Star className={'size-7 transition ' + (n <= value ? 'fill-amber-500 text-amber-500' : 'text-white/15 hover:text-amber-300')} />
         </button>
       ))}
     </div>

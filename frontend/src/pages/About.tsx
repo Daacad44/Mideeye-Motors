@@ -42,7 +42,7 @@ export default function About() {
           <Reveal index={1}>
             <div className="grid grid-cols-2 gap-4">
               {stats.map((s) => (
-                <div key={s.l} className="rounded-3xl border border-line bg-white p-8 text-center shadow-[var(--shadow-soft)]">
+                <div key={s.l} className="rounded-3xl border border-line bg-surface p-8 text-center shadow-[var(--shadow-soft)]">
                   <div className="font-display text-4xl font-extrabold text-brand-600">{s.v}</div>
                   <div className="mt-1 text-[14px] font-semibold text-ink-400">{s.l}</div>
                 </div>
@@ -54,7 +54,7 @@ export default function About() {
         <div className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {values.map((v, i) => (
             <Reveal key={v.title} index={i}>
-              <div className="h-full rounded-3xl border border-line bg-white p-7 shadow-[var(--shadow-soft)]">
+              <div className="h-full rounded-3xl border border-line bg-surface p-7 shadow-[var(--shadow-soft)]">
                 <span className="grid size-12 place-items-center rounded-2xl bg-brand-600 text-white">
                   <v.icon className="size-6" />
                 </span>

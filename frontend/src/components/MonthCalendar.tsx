@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { BusyRange } from '@/lib/vehiclesApi';
+import { useI18n } from '@/context/LocaleContext';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -11,6 +12,7 @@ const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDat
  * Bookings win when a day is covered by both.
  */
 export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; initialMonth?: Date }) {
+  const { t, locale } = useI18n();
   const [cursor, setCursor] = useState(() => {
     const base = initialMonth ?? new Date();
     return new Date(base.getFullYear(), base.getMonth(), 1);
@@ -41,7 +43,7 @@ export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; i
   for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
   for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(year, month, d));
 
-  const monthLabel = cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = cursor.toLocaleDateString(locale === 'so' ? 'so' : 'en-US', { month: 'long', year: 'numeric' });
 
   return (
     <div>
@@ -70,7 +72,7 @@ export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; i
             type === 'booking'
               ? 'bg-brand-600 text-white'
               : type === 'maintenance'
-                ? 'bg-amber-500 text-white'
+                ? 'bg-amber-500 text-navy-950'
                 : 'text-navy-700' + (isToday ? ' ring-1 ring-brand-400' : '');
           return (
             <div key={t} className={'grid aspect-square place-items-center rounded-lg text-[12.5px] font-semibold ' + style}>
@@ -81,8 +83,8 @@ export function MonthCalendar({ ranges, initialMonth }: { ranges: BusyRange[]; i
       </div>
 
       <div className="mt-3 flex items-center gap-4 text-[12px] text-ink-500">
-        <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-brand-600" /> Booked</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-amber-500" /> Maintenance</span>
+        <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-brand-600" /> {t('vehicle.booked')}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-amber-500" /> {t('vehicle.maintenance')}</span>
       </div>
     </div>
   );

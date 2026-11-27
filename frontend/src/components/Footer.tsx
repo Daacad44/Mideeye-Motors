@@ -3,6 +3,7 @@ import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, ArrowRight } from 'l
 import { Logo } from './ui/Logo';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { useI18n } from '@/context/LocaleContext';
+import { useBranding } from '@/lib/branding';
 
 const cols = [
   {
@@ -25,81 +26,89 @@ const cols = [
   },
 ];
 
+const SOCIAL = [
+  { id: 'facebook', Icon: Facebook, label: 'Facebook' },
+  { id: 'instagram', Icon: Instagram, label: 'Instagram' },
+  { id: 'twitter', Icon: Twitter, label: 'X / Twitter' },
+];
+
 export function Footer() {
   const { t } = useI18n();
+  const { phone, email, socials } = useBranding();
+  const contactEmail = email || 'hello@daljirrentalcar.com';
+  const socialLinks = SOCIAL.filter((s) => socials?.[s.id]);
 
   return (
-    <footer className="relative overflow-hidden bg-navy-950 text-white">
-      <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 dotted-grid opacity-50" />
-
-      <div className="relative mx-auto max-w-[1360px] px-5 py-16 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+    <footer className="border-t border-white/8 bg-navy-950">
+      <div className="mx-auto max-w-[1320px] px-4 py-14 sm:px-6">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div>
-            <Logo variant="plain" height={60} />
-            <p className="mt-6 max-w-xs text-sm leading-relaxed text-brand-100/70">
-              {t('footer.tagline')}
-            </p>
-            <div className="mt-6 flex gap-3">
-              {[Facebook, Instagram, Twitter].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-brand-100 transition-colors hover:bg-brand-500 hover:text-white"
-                  aria-label="Social link"
-                >
-                  <Icon className="size-4" />
-                </a>
-              ))}
-            </div>
+            <Logo height={40} />
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink-400">{t('footer.tagline')}</p>
+            {socialLinks.length > 0 && (
+              <div className="mt-6 flex gap-2">
+                {socialLinks.map(({ id, Icon, label }) => (
+                  <a
+                    key={id}
+                    href={socials[id]}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={label}
+                    className="grid size-11 place-items-center rounded-xl border border-white/10 text-ink-500 transition-colors hover:border-brand-600 hover:text-white"
+                  >
+                    <Icon className="size-4" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {cols.map((col) => (
-            <div key={col.titleKey}>
-              <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
+            <nav key={col.titleKey} aria-label={t(col.titleKey)}>
+              <h2 className="mb-4 font-sans text-xs font-bold uppercase tracking-[0.16em] text-white">
                 {t(col.titleKey)}
-              </h4>
+              </h2>
               <ul className="space-y-3">
                 {col.links.map((l) => (
                   <li key={l.key}>
-                    <Link
-                      to={l.to}
-                      className="text-sm text-brand-100/70 transition-colors hover:text-brand-300"
-                    >
+                    <Link to={l.to} className="text-sm text-ink-400 transition-colors hover:text-white">
                       {t(l.key)}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
 
           <div>
-            <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
+            <h2 className="mb-4 font-sans text-xs font-bold uppercase tracking-[0.16em] text-white">
               {t('footer.getInTouch')}
-            </h4>
-            <ul className="space-y-4 text-sm text-brand-100/80">
+            </h2>
+            <ul className="space-y-3.5 text-sm text-ink-400">
+              {phone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="size-4 text-brand-400" aria-hidden />
+                  <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="hover:text-white">{phone}</a>
+                </li>
+              )}
               <li className="flex items-center gap-3">
-                <Phone className="size-4 text-brand-400" /> +252 61 2345678
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="size-4 text-brand-400" /> hello@daljirrentalcar.com
+                <Mail className="size-4 text-brand-400" aria-hidden />
+                <a href={`mailto:${contactEmail}`} className="hover:text-white">{contactEmail}</a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin className="mt-0.5 size-4 text-brand-400" /> Maka Al-Mukarama Rd,
-                Mogadishu, Somalia
+                <MapPin className="mt-0.5 size-4 text-brand-400" aria-hidden /> {t('footer.address')}
               </li>
             </ul>
             <Link
               to="/booking"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
+              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-[14px] bg-brand-600 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-hover"
             >
-              {t('footer.reserve')} <ArrowRight className="size-4" />
+              {t('footer.reserve')} <ArrowRight className="size-4" aria-hidden />
             </Link>
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-brand-100/60 sm:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/6 pt-6 text-[13px] text-ink-400 sm:flex-row">
           <p>© {new Date().getFullYear()} Daljir Rental Car. {t('footer.rights')}</p>
           <LocaleSwitcher variant="light" />
         </div>
